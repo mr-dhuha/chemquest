@@ -107,7 +107,8 @@
                         </div>
                     </div>
                     <button onclick="studentJoin()" id="btn-join" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-black text-xl py-4 rounded-2xl mt-2 transition-all shadow-lg shadow-teal-500/30 transform hover:-translate-y-1">MULAI KUIS</button>
-                    <p id="join-error" class="text-rose-500 text-sm font-bold text-center hidden bg-rose-50 p-3 rounded-xl border border-rose-100"></p>
+                    <button onclick="spectatorJoin()" id="btn-spectator" class="w-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-black text-lg py-3 rounded-2xl transition-all shadow-sm transform hover:-translate-y-1 mt-2">TONTON KLASEMEN ARENA</button>
+                    <p id="join-error" class="text-rose-500 text-sm font-bold text-center hidden bg-rose-50 p-3 rounded-xl border border-rose-100 mt-2"></p>
                 </div>
             </div>
             
@@ -271,7 +272,7 @@
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Posisi</p>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Soal</p>
                         <p class="text-xl font-black text-slate-800"><span id="quiz-progress" class="text-teal-500">1</span>/<span id="quiz-total">1</span></p>
                     </div>
                 </div>
@@ -474,7 +475,7 @@
 
         function showView(viewId) {
             // PROTEKSI KEAMANAN: Rute ini hanya boleh diakses oleh Guru yang sudah Login
-            const teacherViews = ['teacher-dash', 'session-manage', 'arena'];
+            const teacherViews = ['teacher-dash', 'session-manage']; 
             if(teacherViews.includes(viewId) && !currentUser) {
                 viewId = 'landing'; // Paksa kembali ke halaman awal jika belum login
             }
@@ -996,11 +997,40 @@
         // ==========================================
         // ARENA (SPRINT TRACKER)
         // ==========================================
-        async function openArenaTeacher() {
-            // Proteksi Tambahan: Pastikan hanya guru login yang bisa buka
-            if(!currentUser) return showView('landing');
-            if(!activeSession) return showModal("Peringatan", "Buka detail sesi dulu!", "alert");
+        async function spectatorJoin() {
+            const pin = document.getElementById('join-pin').value.trim().toUpperCase();
+            const err = document.getElementById('join-error');
+            const btn = document.getElementById('btn-spectator');
+
+            if(pin.length !== 6) {
+                err.innerText = "Masukkan PIN 6 Karakter untuk menonton Arena!";
+                err.classList.remove('hidden');
+                return;
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> MEMBUKA ARENA...'; 
+            btn.disabled = true;
+
+            const { data: sessData, error: sessErr } = await supabaseClient.from('sessions')
+                .select('*').eq('pin', pin).eq('status', 'live').single();
+
+            if(sessErr || !sessData) {
+                btn.innerHTML = "TONTON KLASEMEN ARENA"; 
+                btn.disabled = false;
+                err.innerText = "PIN Tidak Valid atau Gerbang Kuis belum dibuka.";
+                err.classList.remove('hidden');
+                return;
+            }
+
+            activeSession = sessData;
+            btn.innerHTML = "TONTON KLASEMEN ARENA"; 
+            btn.disabled = false;
+            err.classList.add('hidden');
             
+            await initArena();
+        }
+
+        async function initArena() {
             document.getElementById('arena-pin-display').innerText = activeSession.pin;
             
             // Hitung Max Score untuk Scaling Lintasan
@@ -1019,9 +1049,23 @@
                 .subscribe();
         }
 
+        async function openArenaTeacher() {
+            // Proteksi Tambahan: Pastikan hanya guru login yang bisa buka
+            if(!currentUser) return showView('landing');
+            if(!activeSession) return showModal("Peringatan", "Buka detail sesi dulu!", "alert");
+            
+            await initArena();
+        }
+
         function closeArena() {
             if(arenaSubscription) supabaseClient.removeChannel(arenaSubscription);
-            showView('session-manage');
+            
+            if(currentUser && activeSession && activeSession.teacher_id === currentUser.id) {
+                showView('session-manage');
+            } else {
+                activeSession = null;
+                showView('landing');
+            }
         }
 
         async function fetchPlayersArena() {
