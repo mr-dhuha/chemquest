@@ -57,11 +57,12 @@ NO SVG / NO MERMAID CONFIRMATION:
 I explicitly confirm that NEITHER Mermaid JS NOR SVG graphics were used anywhere in this output. All graphics rely on HTML/CSS styling, Unicode characters, and Canvas-based Chart.js rendering. Plotly was omitted to strictly guarantee the absence of auto-generated <svg> wrapper tags within the DOM.
 
 NARRATIVE PLAN:
-1. Introduction: Hook the reader with the core concept of ChemQuest Arena as a revolution in interactive chemistry learning.
+1. Introduction: Hook the reader with the core concept of ChemQuest Arena as a revolution in interactive chemistry learning. Add CTA Button to the actual game.
 2. The Revolution Impact (Data Overview): Compare traditional quizzes with ChemQuest's real-time arena using a Bar Chart.
 3. Feature Breakdown (Categorical): Display the distinct features for Teachers vs. Students using Material Design cards.
 4. The Deep Learning Triad (Composition): Visualize the 3 pedagogical dimensions of the game using a Doughnut Chart.
 5. Process Flow (Action): Step-by-step guide on how to play, using structured HTML/CSS blocks.
+6. Conclusion: Final Call to Action button.
 
 VISUALIZATION CHOICES:
 - Data Point: Traditional vs Arena Engagement -> Goal: Compare -> Chosen Visualization: Bar Chart -> Justification: Chart.js Canvas rendering allows clear comparison of multiple metrics without SVG.
@@ -78,9 +79,12 @@ VISUALIZATION CHOICES:
         <h1 class="text-5xl md:text-6xl font-black text-primary tracking-tight mb-4 uppercase">
             CHEMQUEST ARENA
         </h1>
-        <p class="text-xl md:text-2xl text-accent-coral font-bold tracking-wide uppercase">
+        <p class="text-xl md:text-2xl text-accent-coral font-bold tracking-wide uppercase mb-8">
             Revolusi Lomba Cerdas Cermat Kimia Interaktif
         </p>
+        <a href="https://mr-dhuha.github.io/chemquest" target="_blank" rel="noopener noreferrer" class="inline-block bg-accent-teal text-white font-black py-4 px-10 rounded-full shadow-xl transform transition-transform hover:-translate-y-1 hover:scale-105 text-xl border-4 border-white">
+            🎮 Coba Sekarang
+        </a>
     </header>
 
     <section class="mb-16">
@@ -261,9 +265,12 @@ VISUALIZATION CHOICES:
         </div>
     </section>
 
-    <footer class="text-center mt-20 pt-10 border-t border-gray-300">
+    <footer class="text-center mt-20 pt-10 border-t border-gray-300 pb-16">
         <h2 class="text-2xl font-bold text-primary mb-2">✨ Bawa Keseruan Ini ke Kelasmu Sekarang! ✨</h2>
-        <p class="text-accent-coral font-bold tracking-widest uppercase">Lebih Interaktif. Lebih Bermakna. Lebih Menyenangkan.</p>
+        <p class="text-accent-coral font-bold tracking-widest uppercase mb-8">Lebih Interaktif. Lebih Bermakna. Lebih Menyenangkan.</p>
+        <a href="https://mr-dhuha.github.io/chemquest/index.html" target="_blank" rel="noopener noreferrer" class="inline-block bg-primary text-white font-black py-4 px-10 rounded-full shadow-xl transform transition-transform hover:-translate-y-1 hover:scale-105 text-xl border-4 border-accent-yellow">
+            Mulai Balapan Kimia 🚀
+        </a>
     </footer>
 
 </div>
