@@ -474,6 +474,12 @@
         }
 
         function showView(viewId) {
+            // PROTEKSI KEAMANAN: Rute ini hanya boleh diakses oleh Guru yang sudah Login
+            const teacherViews = ['teacher-dash', 'session-manage', 'arena'];
+            if(teacherViews.includes(viewId) && !currentUser) {
+                viewId = 'landing'; // Paksa kembali ke halaman awal jika belum login
+            }
+
             document.querySelectorAll('.view-section').forEach(el => {
                 el.classList.remove('active');
             });
@@ -537,6 +543,22 @@
         async function logoutTeacher() {
             await supabaseClient.auth.signOut();
             currentUser = null;
+            activeSession = null;
+            
+            // BERSIHKAN DATA ARENA SPRINT SAAT LOGOUT (Keamanan)
+            document.getElementById('arena-pin-display').innerText = '------';
+            document.getElementById('arena-player-count').innerText = '0';
+            const track = document.getElementById('arena-track');
+            Array.from(track.children).forEach(c => {
+                if(!c.classList.contains('absolute') || c.classList.contains('z-10') && c.classList.contains('relative')) {
+                    if(!c.innerText.includes('FINISH') && !c.classList.contains('checkerboard-bg')) c.remove();
+                }
+            });
+            if(arenaSubscription) {
+                supabaseClient.removeChannel(arenaSubscription);
+                arenaSubscription = null;
+            }
+
             showView('landing');
         }
 
@@ -976,7 +998,10 @@
         // ARENA (SPRINT TRACKER)
         // ==========================================
         async function openArenaTeacher() {
+            // Proteksi Tambahan: Pastikan hanya guru login yang bisa buka
+            if(!currentUser) return showView('landing');
             if(!activeSession) return showModal("Peringatan", "Buka detail sesi dulu!", "alert");
+            
             document.getElementById('arena-pin-display').innerText = activeSession.pin;
             
             // Hitung Max Score untuk Scaling Lintasan
