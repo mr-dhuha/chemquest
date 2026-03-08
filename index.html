@@ -2,203 +2,249 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChemQuest Arena - Sesi Guru</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ChemQuest Arena</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+        
+        body { font-family: 'Nunito', sans-serif; }
+        
         .view-section { display: none; }
-        .view-section.active { display: block; animation: fadeIn 0.3s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .mountain-bg {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23334155' fill-opacity='1' d='M0,288L48,272C96,256,192,224,288,197.3C384,171,480,149,576,165.3C672,181,768,235,864,250.7C960,267,1056,245,1152,224C1248,203,1344,181,1392,170.7L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
-            background-position: bottom;
-            background-repeat: no-repeat; background-size: cover;
+        .view-section.active { 
+            display: flex; 
+            flex-direction: column;
+            animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
         }
+        
+        @keyframes slideUpFade { 
+            from { opacity: 0; transform: translateY(20px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Track Background */
+        .checkerboard-bg {
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSJ3aGl0ZSIvPjxyZWN0IHg9IjEwIiB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9ImJsYWNrIi8+PHJlY3QgeT0iMTAiIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgZmlsbD0iYmxhY2siLz48cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');
+        }
+        
+        /* Hide Navbar by default for standalone views */
+        #navbar.hidden { display: none !important; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Navbar Minimalis -->
-    <nav id="navbar" class="bg-slate-800 text-white p-4 shadow-md flex justify-between items-center hidden z-50 relative">
-        <div class="font-bold flex items-center gap-2 cursor-pointer" onclick="showView('landing')">
-            <i class="fa-solid fa-flask text-teal-400"></i> ChemQuest
+    <!-- Navbar Guru -->
+    <nav id="navbar" class="bg-white border-b-2 border-slate-200 p-4 shadow-sm flex justify-between items-center hidden z-50 sticky top-0 w-full">
+        <div class="font-black text-xl flex items-center gap-2 cursor-pointer text-slate-800" onclick="showView('teacher-dash')">
+            <i class="fa-solid fa-flask text-teal-500 text-2xl"></i> Chem<span class="text-teal-500">Quest</span>
         </div>
         <div class="flex items-center gap-4">
-            <span id="nav-user" class="text-sm font-bold text-teal-300"></span>
-            <button onclick="logoutTeacher()" id="btn-logout" class="text-sm bg-slate-700 hover:bg-red-600 px-3 py-1 rounded hidden"><i class="fa-solid fa-sign-out-alt"></i> Keluar</button>
+            <span id="nav-user" class="text-sm font-bold text-slate-500 hidden sm:block"></span>
+            <button onclick="logoutTeacher()" id="btn-logout" class="text-sm bg-rose-100 text-rose-600 hover:bg-rose-500 hover:text-white transition-colors px-4 py-2 rounded-xl font-bold"><i class="fa-solid fa-sign-out-alt"></i> Keluar</button>
         </div>
     </nav>
 
     <!-- SETUP ALERt -->
-    <div id="setup-alert" class="bg-red-500 text-white p-4 text-center font-bold hidden">
+    <div id="setup-alert" class="bg-red-500 text-white p-4 text-center font-bold hidden z-[100] relative">
         <i class="fa-solid fa-triangle-exclamation"></i> GANTI URL & KEY SUPABASE DI DALAM KODE HTML UNTUK MENGHUBUNGKAN DATABASE!
     </div>
 
-    <!-- CUSTOM MODAL (Pengganti Alert/Prompt di Iframe) -->
-    <div id="custom-modal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 id="modal-title" class="text-xl font-bold mb-2 text-slate-800">Title</h3>
-            <p id="modal-msg" class="text-slate-600 mb-4">Message</p>
-            <input type="text" id="modal-input" class="w-full p-3 border-2 border-slate-200 rounded-xl mb-4 hidden focus:border-teal-500 outline-none" placeholder="Ketik di sini...">
-            <div class="flex justify-end gap-2">
-                <button id="modal-btn-cancel" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-bold hidden hover:bg-slate-300">Batal</button>
-                <button id="modal-btn-ok" class="px-4 py-2 bg-teal-500 text-white rounded-lg font-bold hover:bg-teal-600">OK</button>
+    <!-- CUSTOM MODAL -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl transform transition-transform">
+            <h3 id="modal-title" class="text-2xl font-black mb-3 text-slate-800">Title</h3>
+            <p id="modal-msg" class="text-slate-600 mb-6 font-medium">Message</p>
+            <input type="text" id="modal-input" class="w-full p-4 border-2 border-slate-200 rounded-xl mb-6 hidden focus:border-teal-500 outline-none text-lg font-bold" placeholder="Ketik di sini...">
+            <div class="flex justify-end gap-3">
+                <button id="modal-btn-cancel" class="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hidden hover:bg-slate-200 transition-colors">Batal</button>
+                <button id="modal-btn-ok" class="px-5 py-3 bg-teal-500 text-white rounded-xl font-bold hover:bg-teal-600 transition-colors shadow-lg shadow-teal-500/30">OK</button>
             </div>
         </div>
     </div>
 
-    <main id="app-container" class="w-full">
+    <main id="app-container" class="w-full flex-1 flex flex-col">
 
         <!-- ========================================== -->
-        <!-- 1. LANDING PAGE (Siswa Join via PIN) -->
+        <!-- 1. LANDING PAGE (Siswa Join) -->
         <!-- ========================================== -->
-        <section id="landing" class="view-section active min-h-screen bg-gradient-to-br from-slate-900 to-teal-900 flex flex-col items-center justify-center p-6 text-white text-center">
-            <div class="absolute top-4 right-4">
-                <button onclick="showView('teacher-auth')" class="text-slate-300 hover:text-white bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm text-sm font-bold border border-white/20"><i class="fa-solid fa-chalkboard-user"></i> Login Guru</button>
+        <section id="landing" class="view-section active flex-1 bg-gradient-to-br from-teal-50 via-sky-50 to-amber-50 items-center justify-center p-4 relative">
+            <div class="absolute top-4 right-4 sm:top-6 sm:right-6">
+                <button onclick="showView('teacher-auth')" class="text-teal-600 hover:text-white bg-white hover:bg-teal-500 px-5 py-2.5 rounded-2xl shadow-sm text-sm font-bold border-2 border-teal-100 hover:border-teal-500 transition-all"><i class="fa-solid fa-chalkboard-user mr-1"></i> Area Guru</button>
             </div>
 
-            <div class="w-24 h-24 bg-teal-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(20,184,166,0.5)]">
-                <i class="fa-solid fa-flask text-4xl text-white"></i>
+            <div class="w-full max-w-md bg-white p-8 sm:p-10 rounded-[2rem] shadow-2xl border-4 border-white">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-gradient-to-tr from-teal-400 to-sky-400 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-teal-200 transform rotate-3">
+                        <i class="fa-solid fa-flask text-4xl text-white -rotate-3"></i>
+                    </div>
+                    <h1 class="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight">Chem<span class="text-teal-500">Quest</span></h1>
+                    <p class="text-slate-500 font-bold mt-2">Arena Belajar Interaktif</p>
+                </div>
+                
+                <div class="space-y-5">
+                    <div>
+                        <input type="text" id="join-pin" class="w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 outline-none text-center text-3xl font-black uppercase tracking-[0.3em] text-slate-700 placeholder:text-slate-300 transition-colors" placeholder="PIN" maxlength="6">
+                    </div>
+                    <div>
+                        <input type="text" id="join-name" class="w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 outline-none font-bold text-center text-lg placeholder:text-slate-400 transition-colors" placeholder="Nama Panggilanmu">
+                    </div>
+                    <div>
+                        <p class="text-sm font-black text-slate-500 mb-3 text-center uppercase tracking-wide">Pilih Karaktermu</p>
+                        <div class="flex flex-wrap justify-center gap-2 max-h-40 overflow-y-auto p-3 border-2 border-slate-100 bg-slate-50 rounded-2xl" id="avatar-selection">
+                            <!-- Avatars injected via JS -->
+                        </div>
+                    </div>
+                    <button onclick="studentJoin()" id="btn-join" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-black text-xl py-4 rounded-2xl mt-2 transition-all shadow-lg shadow-teal-500/30 transform hover:-translate-y-1">MULAI KUIS</button>
+                    <p id="join-error" class="text-rose-500 text-sm font-bold text-center hidden bg-rose-50 p-3 rounded-xl border border-rose-100"></p>
+                </div>
             </div>
-            <h1 class="text-5xl font-extrabold mb-2 tracking-tight">Chem<span class="text-teal-400">Quest</span> Arena</h1>
-            <p class="text-lg text-slate-300 mb-10">Masukkan PIN dari Gurumu untuk bergabung ke Arena!</p>
             
-            <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full text-slate-800">
-                <div class="space-y-4">
-                    <div>
-                        <input type="text" id="join-pin" class="w-full p-4 border-4 border-slate-200 rounded-xl focus:border-teal-500 outline-none text-center text-3xl font-black uppercase tracking-widest text-slate-700" placeholder="PIN SESI" maxlength="6">
-                    </div>
-                    <div>
-                        <input type="text" id="join-name" class="w-full p-3 border-2 border-slate-200 rounded-xl focus:border-teal-500 outline-none font-bold text-center" placeholder="Nama Panggilanmu">
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-slate-500 mb-2">Pilih Avatar:</p>
-                        <div class="flex gap-2 justify-center" id="avatar-selection">
-                            <button onclick="selectAvatar('🦊')" class="avatar-btn text-3xl p-2 rounded bg-teal-100 border-2 border-teal-500">🦊</button>
-                            <button onclick="selectAvatar('🐼')" class="avatar-btn text-3xl p-2 rounded hover:bg-slate-100 border-2 border-transparent">🐼</button>
-                            <button onclick="selectAvatar('🐯')" class="avatar-btn text-3xl p-2 rounded hover:bg-slate-100 border-2 border-transparent">🐯</button>
-                            <button onclick="selectAvatar('🐸')" class="avatar-btn text-3xl p-2 rounded hover:bg-slate-100 border-2 border-transparent">🐸</button>
-                        </div>
-                    </div>
-                    <button onclick="studentJoin()" id="btn-join" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-black text-xl py-4 rounded-xl mt-4 transition-colors shadow-lg">MASUK ARENA</button>
-                    <p id="join-error" class="text-red-500 text-sm font-bold hidden"></p>
-                </div>
+            <div class="mt-8 text-center text-slate-400 font-bold text-sm">
+                Siap Menjawab Tantangan? 🧠✨
             </div>
         </section>
 
         <!-- ========================================== -->
-        <!-- 2. TEACHER AUTH (Email & Password) -->
+        <!-- 2. TEACHER AUTH -->
         <!-- ========================================== -->
-        <section id="teacher-auth" class="view-section py-20 px-4">
-            <div class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl border-t-8 border-orange-500">
-                <button onclick="showView('landing')" class="text-slate-400 hover:text-slate-600 mb-4"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
-                <h2 class="text-3xl font-extrabold text-center mb-2"><i class="fa-solid fa-chalkboard-user text-orange-500"></i> Portal Guru</h2>
-                <p class="text-center text-slate-500 mb-8">Login untuk mengelola Sesi Kuis dan Soal.</p>
+        <section id="teacher-auth" class="view-section flex-1 bg-slate-50 items-center justify-center p-4">
+            <div class="w-full max-w-md bg-white p-8 sm:p-10 rounded-[2rem] shadow-xl border border-slate-100">
+                <button onclick="showView('landing')" class="text-slate-400 hover:text-slate-700 font-bold mb-6 flex items-center gap-2 transition-colors"><i class="fa-solid fa-arrow-left"></i> Kembali ke Awal</button>
+                
+                <h2 class="text-3xl font-black text-slate-800 mb-2"><i class="fa-solid fa-chalkboard-user text-sky-500 mr-2"></i> Portal Guru</h2>
+                <p class="text-slate-500 font-medium mb-8">Login untuk mengelola soal dan memulai lintasan Arena Kuis.</p>
                 
                 <div class="space-y-4">
-                    <input type="email" id="t-email" class="w-full p-3 border-2 border-slate-200 rounded-xl outline-none" placeholder="Email Anda">
-                    <input type="password" id="t-pass" class="w-full p-3 border-2 border-slate-200 rounded-xl outline-none" placeholder="Password">
-                    <div class="flex gap-2">
-                        <button onclick="teacherLogin()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl">Login</button>
-                        <button onclick="teacherRegister()" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">Daftar Baru</button>
+                    <input type="email" id="t-email" class="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors" placeholder="Email Terdaftar">
+                    <input type="password" id="t-pass" class="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors" placeholder="Kata Sandi">
+                    <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                        <button onclick="teacherLogin()" class="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-black py-4 rounded-xl shadow-lg shadow-sky-500/30 transition-transform transform hover:-translate-y-1">Login Masuk</button>
+                        <button onclick="teacherRegister()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-black py-4 rounded-xl shadow-lg transition-transform transform hover:-translate-y-1">Daftar Baru</button>
                     </div>
-                    <p id="t-auth-error" class="text-red-500 text-sm font-bold text-center hidden"></p>
+                    <p id="t-auth-error" class="text-rose-500 text-sm font-bold text-center hidden bg-rose-50 p-3 rounded-xl mt-2"></p>
                 </div>
             </div>
         </section>
 
         <!-- ========================================== -->
-        <!-- 3. TEACHER DASHBOARD (List of Sessions) -->
+        <!-- 3. TEACHER DASHBOARD -->
         <!-- ========================================== -->
-        <section id="teacher-dash" class="view-section py-10 px-4">
-            <div class="max-w-5xl mx-auto">
-                <div class="flex justify-between items-center mb-8">
+        <section id="teacher-dash" class="view-section py-8 px-4 flex-1 bg-slate-50">
+            <div class="max-w-6xl mx-auto w-full">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                     <div>
-                        <h2 class="text-3xl font-extrabold text-slate-800">Ruang Kendali Guru</h2>
-                        <p class="text-slate-500">Kelola sesi (room) kuis Anda.</p>
+                        <h2 class="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">Ruang Kendali</h2>
+                        <p class="text-slate-500 font-bold mt-1">Kelola sesi kelas dan kuis interaktif Anda.</p>
                     </div>
-                    <button onclick="createSession()" class="bg-teal-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-teal-600"><i class="fa-solid fa-plus"></i> Buat Sesi Baru</button>
+                    <button onclick="createSession()" class="w-full sm:w-auto bg-teal-500 hover:bg-teal-600 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1">
+                        <i class="fa-solid fa-plus text-xl"></i> Buat Sesi Kuis Baru
+                    </button>
                 </div>
 
-                <div id="session-list" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="text-center p-8 text-slate-400 col-span-3"><i class="fa-solid fa-spinner fa-spin"></i> Memuat sesi...</div>
+                <div id="session-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="col-span-full text-center p-10 text-slate-400 font-bold"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Memuat sesi...</div>
                 </div>
             </div>
         </section>
 
         <!-- ========================================== -->
-        <!-- 4. SESSION MANAGER (Manage Single Session) -->
+        <!-- 4. SESSION MANAGER -->
         <!-- ========================================== -->
-        <section id="session-manage" class="view-section py-10 px-4">
-            <div class="max-w-6xl mx-auto">
-                <button onclick="showView('teacher-dash')" class="text-slate-500 hover:text-slate-800 font-bold mb-4"><i class="fa-solid fa-arrow-left"></i> Kembali ke Daftar Sesi</button>
+        <section id="session-manage" class="view-section py-8 px-4 flex-1 bg-slate-50">
+            <div class="max-w-5xl mx-auto w-full">
+                <button onclick="showView('teacher-dash')" class="text-slate-500 hover:text-slate-800 font-black mb-6 flex items-center gap-2 transition-colors"><i class="fa-solid fa-arrow-left"></i> Kembali ke Dashboard</button>
                 
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div>
-                        <h2 class="text-2xl font-black text-slate-800" id="sm-title">Judul Sesi</h2>
-                        <div class="flex items-center gap-3 mt-2">
-                            <span class="bg-slate-100 text-slate-600 px-3 py-1 rounded font-mono font-bold tracking-widest border" id="sm-pin">PIN: ------</span>
-                            <span id="sm-status" class="px-3 py-1 rounded font-bold text-xs uppercase">DRAFT</span>
+                <div class="bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-100 mb-8">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                        <div>
+                            <div class="flex items-center gap-3 mb-2">
+                                <span id="sm-status" class="px-3 py-1.5 rounded-lg font-black text-xs uppercase tracking-wider">DRAFT</span>
+                                <span class="bg-slate-100 text-slate-600 px-4 py-1.5 rounded-lg font-mono font-black tracking-widest border border-slate-200" id="sm-pin">PIN: ------</span>
+                            </div>
+                            <h2 class="text-3xl font-black text-slate-800" id="sm-title">Judul Sesi</h2>
                         </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button id="btn-toggle-live" onclick="toggleLive()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow"><i class="fa-solid fa-play"></i> Mulai Sesi (Live)</button>
-                        <button onclick="openArenaTeacher()" class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-lg font-bold shadow"><i class="fa-solid fa-desktop"></i> Buka Layar Arena</button>
+                        <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                            <button id="btn-toggle-live" onclick="toggleLive()" class="flex-1 lg:flex-none bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-black shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2"><i class="fa-solid fa-play"></i> Buka Gerbang (Live)</button>
+                            <button onclick="openArenaTeacher()" class="flex-1 lg:flex-none bg-sky-500 hover:bg-sky-600 text-white px-6 py-3.5 rounded-xl font-black shadow-lg shadow-sky-500/20 transition-all flex justify-center items-center gap-2"><i class="fa-solid fa-flag-checkered"></i> Pantau Lintasan Arena</button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Tabs -->
-                <div class="flex gap-4 border-b-2 border-slate-200 mb-6">
-                    <button onclick="switchSessionTab('soal')" id="tab-soal" class="pb-2 px-4 font-bold text-teal-600 border-b-4 border-teal-500">Daftar Soal</button>
-                    <button onclick="switchSessionTab('siswa')" id="tab-siswa" class="pb-2 px-4 font-bold text-slate-400 hover:text-slate-600">Hasil Siswa</button>
+                <div class="flex gap-2 sm:gap-6 border-b-2 border-slate-200 mb-8">
+                    <button onclick="switchSessionTab('soal')" id="tab-soal" class="pb-3 px-2 sm:px-6 font-black text-lg text-teal-600 border-b-4 border-teal-500 transition-colors">Daftar Soal</button>
+                    <button onclick="switchSessionTab('siswa')" id="tab-siswa" class="pb-3 px-2 sm:px-6 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors">Analisis Siswa</button>
                 </div>
 
                 <!-- Soal Tab -->
                 <div id="sm-soal-view">
-                    <button onclick="showQuestionForm()" class="bg-teal-100 text-teal-700 px-4 py-2 rounded-lg font-bold mb-6 border border-teal-200 hover:bg-teal-200"><i class="fa-solid fa-plus"></i> Tambah Soal</button>
+                    <button onclick="showQuestionForm()" class="bg-teal-50 text-teal-600 hover:bg-teal-100 px-6 py-3 rounded-xl font-black mb-8 border border-teal-200 transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> Tambah Pertanyaan</button>
                     
                     <!-- Form Soal -->
-                    <div id="q-form-container" class="bg-slate-50 p-6 rounded-xl border border-teal-200 mb-6 hidden">
-                        <h3 class="font-bold text-lg mb-4 text-teal-800" id="q-form-title">Buat Soal</h3>
-                        <input type="hidden" id="q-id">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block font-bold text-sm mb-1">Kategori (Indikator Mendalam)</label>
-                                <select id="q-kategori" class="w-full p-2 border rounded">
-                                    <option value="Pahami Konsep">Pahami Konsep</option>
-                                    <option value="Selesaikan Masalah">Selesaikan Masalah</option>
-                                    <option value="Kaitkan Kehidupan">Kaitkan Kehidupan</option>
-                                </select>
-                                <label class="block font-bold text-sm mb-1 mt-3">Pertanyaan</label>
-                                <textarea id="q-text" class="w-full p-2 border rounded" rows="3"></textarea>
-                                <label class="block font-bold text-sm mb-1 mt-3">Opsi (Pisahkan dengan koma)</label>
-                                <input type="text" id="q-options" class="w-full p-2 border rounded" placeholder="Asam, Basa, Garam">
-                                <label class="block font-bold text-sm mb-1 mt-3">Jawaban Benar</label>
-                                <input type="text" id="q-answer" class="w-full p-2 border rounded border-teal-500" placeholder="Harus sama dgn opsi">
+                    <div id="q-form-container" class="bg-white p-6 sm:p-8 rounded-[2rem] shadow-xl border-2 border-teal-100 mb-8 hidden transform transition-all">
+                        <h3 class="font-black text-2xl mb-6 text-slate-800"><i class="fa-solid fa-pen-to-square text-teal-500 mr-2"></i> Buat Soal Baru</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Kategori Soal</label>
+                                    <select id="q-kategori" class="w-full p-3.5 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-bold">
+                                        <option value="Pahami Konsep">Pahami Konsep</option>
+                                        <option value="Selesaikan Masalah">Selesaikan Masalah</option>
+                                        <option value="Kaitkan Kehidupan">Kaitkan Kehidupan</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Pertanyaan</label>
+                                    <textarea id="q-text" class="w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-medium resize-none" rows="4" placeholder="Ketik pertanyaan di sini..."></textarea>
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Opsi Jawaban (Pisahkan dengan koma)</label>
+                                    <input type="text" id="q-options" class="w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-medium" placeholder="Contoh: Merah, Kuning, Hijau, Biru">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-sm text-emerald-500 mb-1.5 uppercase tracking-wide">Jawaban Benar</label>
+                                    <input type="text" id="q-answer" class="w-full p-4 border-2 border-emerald-300 bg-emerald-50 rounded-xl focus:border-emerald-500 outline-none font-black text-emerald-700 placeholder:font-normal placeholder:text-emerald-300" placeholder="Ketik persis seperti salah satu opsi">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block font-bold text-sm mb-1">Upload Gambar - Opsional</label>
-                                <input type="file" id="q-image" accept="image/*" class="w-full p-2 border rounded bg-white">
-                                <input type="hidden" id="q-image-base64">
-                                <img id="q-image-preview" class="max-h-32 mt-2 hidden rounded border">
-                                <label class="block font-bold text-sm mb-1 mt-3">Caption Gambar</label>
-                                <input type="text" id="q-caption" class="w-full p-2 border rounded">
+                            <div class="space-y-4">
+                                <div class="bg-slate-50 p-6 rounded-xl border-2 border-dashed border-slate-300 h-full flex flex-col justify-center">
+                                    <label class="block font-bold text-sm text-slate-500 mb-3 text-center uppercase tracking-wide"><i class="fa-solid fa-image text-xl mb-2 block"></i> Gambar Pendukung (Opsional)</label>
+                                    <input type="file" id="q-image" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-black file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer mb-4">
+                                    <input type="hidden" id="q-image-base64">
+                                    <div class="flex-1 flex items-center justify-center min-h-[120px]">
+                                        <img id="q-image-preview" class="max-h-40 rounded-xl shadow-sm hidden border-2 border-white">
+                                    </div>
+                                    <div class="mt-4">
+                                        <label class="block font-bold text-xs text-slate-400 mb-1 uppercase">Keterangan Gambar</label>
+                                        <input type="text" id="q-caption" class="w-full p-3 border-2 border-slate-200 bg-white rounded-lg focus:border-teal-500 outline-none text-sm" placeholder="Caption...">
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="mt-4 flex justify-end gap-2">
-                            <button onclick="hideQuestionForm()" class="px-4 py-2 bg-slate-200 rounded font-bold">Batal</button>
-                            <button onclick="saveQuestion()" class="px-4 py-2 bg-teal-500 text-white rounded font-bold">Simpan Soal</button>
+                        <div class="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-100">
+                            <button onclick="hideQuestionForm()" class="px-6 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-black transition-colors">Batal</button>
+                            <button onclick="saveQuestion()" class="px-8 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-black shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1">Simpan Soal</button>
                         </div>
                     </div>
 
-                    <div id="sm-q-list" class="space-y-3"></div>
+                    <div id="sm-q-list" class="space-y-4"></div>
                 </div>
 
                 <!-- Siswa Tab -->
                 <div id="sm-siswa-view" class="hidden">
-                    <div id="sm-s-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    <div id="sm-s-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
                 </div>
             </div>
         </section>
@@ -206,89 +252,116 @@
         <!-- ========================================== -->
         <!-- 5. STUDENT QUIZ (PLAYING) -->
         <!-- ========================================== -->
-        <section id="quiz" class="view-section py-10 px-4">
-            <div id="quiz-loading" class="text-center text-2xl font-bold animate-pulse text-teal-600">Menyiapkan Arena...</div>
+        <section id="quiz" class="view-section py-6 px-4 flex-1 bg-slate-50 overflow-y-auto">
+            <div id="quiz-loading" class="flex-1 flex flex-col items-center justify-center h-full">
+                <i class="fa-solid fa-spinner fa-spin text-5xl text-teal-400 mb-4"></i>
+                <h2 class="text-2xl font-black text-slate-800 animate-pulse">Menyiapkan Kuis...</h2>
+            </div>
             
-            <div id="quiz-content" class="max-w-xl mx-auto hidden">
-                <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                    <div class="flex items-center gap-3">
-                        <span id="quiz-avatar" class="text-3xl bg-slate-100 p-2 rounded-xl"></span>
+            <div id="quiz-content" class="max-w-3xl mx-auto w-full hidden">
+                
+                <!-- Player Header -->
+                <div class="flex justify-between items-center mb-6 bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 bg-gradient-to-br from-amber-100 to-amber-200 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-amber-300" id="quiz-avatar"></div>
                         <div>
-                            <p id="quiz-player-name" class="font-bold text-slate-800"></p>
-                            <p id="quiz-player-score" class="text-xs text-teal-600 font-bold">0 Poin</p>
+                            <p id="quiz-player-name" class="font-black text-slate-800 text-lg leading-none mb-1"></p>
+                            <div class="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-emerald-100 text-emerald-700">
+                                <i class="fa-solid fa-star mr-1 text-emerald-500"></i> <span id="quiz-player-score">0 Poin</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="text-right text-sm font-bold text-slate-400">Pos <span id="quiz-progress">1/1</span></div>
+                    <div class="text-right">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Posisi</p>
+                        <p class="text-xl font-black text-slate-800"><span id="quiz-progress" class="text-teal-500">1</span>/<span id="quiz-total">1</span></p>
+                    </div>
                 </div>
 
-                <div class="h-3 bg-slate-200 rounded-full mb-6 overflow-hidden">
-                    <div id="quiz-bar" class="h-full bg-gradient-to-r from-teal-400 to-blue-500 transition-all duration-500" style="width: 0%"></div>
+                <!-- Simple Progress Bar -->
+                <div class="w-full h-3 bg-slate-200 rounded-full mb-8 mt-2 overflow-hidden shadow-inner border border-slate-300">
+                    <div id="quiz-bar" class="h-full bg-gradient-to-r from-teal-400 to-sky-500 transition-all duration-500 ease-out" style="width: 0%"></div>
                 </div>
 
-                <div id="question-card" class="bg-white rounded-3xl shadow-xl p-6 md:p-8 relative">
-                    <div id="quiz-category" class="absolute top-0 right-0 px-4 py-1 rounded-bl-xl text-xs font-bold bg-blue-100 text-blue-600 border-b border-l border-blue-200">Kategori</div>
+                <!-- Question Card -->
+                <div id="question-card" class="bg-white rounded-[2rem] shadow-xl border border-slate-100 p-6 sm:p-10 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-sky-100 text-sky-700 px-5 py-2 rounded-bl-2xl font-black text-xs uppercase tracking-wider border-b border-l border-sky-200" id="quiz-category">Kategori</div>
                     
-                    <div id="quiz-image-container" class="mb-6 rounded-xl overflow-hidden border border-slate-200 hidden mt-4">
-                        <img id="quiz-image" src="" class="w-full max-h-48 object-contain bg-slate-100" />
-                        <div id="quiz-caption" class="bg-slate-800 text-white p-2 text-xs text-center"></div>
+                    <div id="quiz-image-container" class="mb-8 rounded-2xl overflow-hidden border border-slate-100 hidden mt-6 shadow-sm">
+                        <img id="quiz-image" src="" class="w-full max-h-64 object-contain bg-slate-50" />
+                        <div id="quiz-caption" class="bg-slate-800/5 text-slate-600 p-3 text-sm font-bold text-center border-t border-slate-100"></div>
                     </div>
                     
-                    <h3 id="quiz-qtext" class="text-xl md:text-2xl font-bold text-slate-800 mb-8 text-center mt-6">Pertanyaan?</h3>
-                    <div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    <h3 id="quiz-qtext" class="text-2xl sm:text-3xl font-black text-slate-800 mb-10 text-center mt-8 leading-tight"></h3>
+                    
+                    <div id="quiz-options" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"></div>
                 </div>
-                <p id="quiz-feedback" class="text-center font-bold mt-6 text-xl hidden"></p>
+                
+                <!-- Feedback Overlay inside card -->
+                <div id="quiz-feedback" class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none hidden bg-white/60 backdrop-blur-sm">
+                    <div id="feedback-box" class="px-8 py-6 rounded-[2rem] font-black text-3xl shadow-2xl transform scale-50 opacity-0 transition-all duration-300 flex flex-col items-center text-center gap-3">
+                        <i id="feedback-icon" class="text-6xl mb-2"></i>
+                        <span id="feedback-text"></span>
+                    </div>
+                </div>
             </div>
 
             <!-- REFLECTION PHASE -->
-            <div id="reflection-content" class="max-w-lg mx-auto mt-10 p-4 hidden">
-                <div class="bg-white p-8 rounded-3xl shadow-2xl border-t-8 border-teal-500">
-                    <div class="w-16 h-16 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-comment-dots text-3xl"></i></div>
-                    <h2 class="text-2xl font-black text-center mb-2">Satu Langkah Terakhir!</h2>
-                    <label class="block font-bold text-slate-700 mb-2">Tuliskan refleksimu tentang sesi kuis hari ini:</label>
-                    <textarea id="refleksi-text" class="w-full h-32 p-4 border-2 border-slate-200 rounded-xl focus:border-teal-500 outline-none resize-none mb-6"></textarea>
-                    <button onclick="submitReflection()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-4 rounded-xl">Kirim & Selesai</button>
+            <div id="reflection-content" class="max-w-xl mx-auto mt-10 p-4 hidden">
+                <div class="bg-white p-8 sm:p-12 rounded-[2rem] shadow-xl border-t-8 border-teal-500 text-center">
+                    <div class="w-20 h-20 bg-teal-50 text-teal-500 rounded-3xl flex items-center justify-center mx-auto mb-6 transform rotate-3"><i class="fa-solid fa-comment-dots text-4xl -rotate-3"></i></div>
+                    <h2 class="text-3xl font-black text-slate-800 mb-3">Garis Finish Terlihat!</h2>
+                    <p class="font-bold text-slate-500 mb-8">Sebelum menyentuh pita finish, ceritakan singkat refleksi atau perasaanmu tentang kuis ini.</p>
+                    <textarea id="refleksi-text" class="w-full h-36 p-5 border-2 border-slate-200 bg-slate-50 rounded-2xl focus:bg-white focus:border-teal-500 outline-none resize-none mb-8 font-medium text-lg placeholder:text-slate-300 transition-colors" placeholder="Ketik refleksimu di sini..."></textarea>
+                    <button onclick="submitReflection()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-black text-xl py-5 rounded-2xl shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1">Kirim & Selesaikan Balapan</button>
                 </div>
             </div>
 
             <!-- FINISH PHASE -->
-            <div id="finish-content" class="max-w-md mx-auto mt-10 text-center bg-white p-10 rounded-3xl shadow-2xl hidden">
-                <i class="fa-solid fa-trophy text-6xl text-yellow-400 mb-6 animate-bounce block"></i>
-                <h2 class="text-3xl font-extrabold mb-2">Sesi Selesai!</h2>
-                <div id="finish-score" class="text-6xl font-black text-teal-600 mb-8">0 Poin</div>
-                <button onclick="logoutStudent()" class="text-teal-600 font-bold hover:underline">Keluar Sesi</button>
+            <div id="finish-content" class="max-w-md mx-auto mt-10 text-center bg-white p-10 sm:p-14 rounded-[3rem] shadow-2xl border-4 border-white hidden relative overflow-hidden">
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiNlMmU4ZjAiLz48L3N2Zz4=')] opacity-50 z-0"></div>
+                <div class="relative z-10">
+                    <i class="fa-solid fa-medal text-7xl text-amber-400 mb-6 drop-shadow-lg animate-bounce block"></i>
+                    <h2 class="text-3xl font-black mb-2 text-slate-800">Luar Biasa!</h2>
+                    <p class="font-bold text-slate-500 mb-8">Kamu telah menyelesaikan semua soal.</p>
+                    <div class="bg-slate-50 rounded-3xl p-6 border-2 border-slate-100 mb-10">
+                        <p class="text-sm font-black text-slate-400 uppercase tracking-widest mb-1">Skor Akhir</p>
+                        <div id="finish-score" class="text-6xl font-black text-teal-500">0</div>
+                    </div>
+                    <button onclick="logoutStudent()" class="text-slate-500 font-bold hover:text-slate-800 transition-colors flex items-center justify-center gap-2 mx-auto"><i class="fa-solid fa-door-open"></i> Keluar Kuis</button>
+                </div>
             </div>
         </section>
 
         <!-- ========================================== -->
-        <!-- 6. LIVE ARENA (GUNUNG - LEADERBOARD) -->
+        <!-- 6. LIVE ARENA (SPRINT TRACK) -->
         <!-- ========================================== -->
-        <section id="arena" class="view-section h-screen w-full bg-gradient-to-t from-slate-900 via-slate-800 to-blue-900 overflow-hidden relative">
-            <div class="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-50">
-                <div class="bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-white shadow-lg flex gap-4 items-center">
+        <section id="arena" class="view-section flex-1 bg-sky-50 overflow-hidden relative flex flex-col h-screen">
+            <!-- Header Arena -->
+            <div class="bg-white/90 backdrop-blur-md p-4 sm:p-6 border-b border-white/50 shadow-sm z-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-sky-100 text-sky-500 rounded-xl flex items-center justify-center text-2xl shadow-inner border border-sky-200"><i class="fa-solid fa-stopwatch"></i></div>
                     <div>
-                        <h1 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400">ARENA KUIS</h1>
-                        <p class="text-slate-300">Siswa Mendaki: <span id="arena-player-count" class="font-bold text-white">0</span></p>
-                    </div>
-                    <div class="bg-teal-500 text-white px-4 py-2 rounded-xl text-center">
-                        <p class="text-xs uppercase font-bold text-teal-100">PIN JOIN</p>
-                        <p class="text-2xl font-black tracking-widest font-mono" id="arena-pin-display">------</p>
+                        <h1 class="text-2xl font-black text-slate-800 leading-none mb-1">ARENA SPRINT</h1>
+                        <p class="text-slate-500 font-bold text-sm">Siswa Berlari: <span id="arena-player-count" class="text-teal-600 font-black px-1.5 py-0.5 bg-teal-50 rounded">0</span></p>
                     </div>
                 </div>
-                <button onclick="closeArena()" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl backdrop-blur-md font-bold">Tutup Arena</button>
-            </div>
-
-            <div class="absolute bottom-0 w-full h-[80vh] flex justify-center items-end pb-10 z-10 mountain-bg">
-                <div class="w-full max-w-5xl h-full relative" id="arena-track">
-                    <div class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-transparent via-yellow-400 to-transparent shadow-[0_0_20px_#facc15] z-0">
-                       <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-yellow-400 text-black px-4 py-1 rounded-full font-black flex items-center gap-2"><i class="fa-solid fa-flag"></i> FINISH</div>
+                <div class="flex items-center gap-4 w-full sm:w-auto">
+                    <div class="bg-amber-100 text-amber-800 px-6 py-2 rounded-2xl text-center border-2 border-amber-200 flex-1 sm:flex-none">
+                        <p class="text-[10px] uppercase font-black tracking-widest text-amber-600/80 mb-0.5">PIN JOIN</p>
+                        <p class="text-3xl font-black tracking-[0.2em] font-mono leading-none" id="arena-pin-display">------</p>
                     </div>
+                    <button onclick="closeArena()" class="bg-slate-800 hover:bg-slate-900 text-white w-12 h-12 rounded-2xl shadow-lg transition-transform transform hover:-translate-y-1 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-times"></i></button>
                 </div>
             </div>
 
-            <div class="absolute bottom-6 right-6 z-50 bg-black/50 backdrop-blur-md border border-white/10 rounded-2xl p-4 text-white w-64 shadow-2xl">
-                <h3 class="font-bold border-b border-white/20 pb-2 mb-3"><i class="fa-solid fa-trophy text-yellow-400"></i> Top Pendaki</h3>
-                <div id="arena-leaderboard" class="space-y-2">
-                    <p class="text-xs text-slate-400 italic">Menunggu pemain join...</p>
+            <!-- The Track Container -->
+            <div class="flex-1 overflow-y-auto bg-green-400 relative p-2 sm:p-6" id="arena-track-scroll">
+                <!-- Grass Field Background inside -->
+                <div class="w-full min-h-full bg-[#cb5d38] rounded-[2rem] sm:rounded-[3rem] border-8 sm:border-[12px] border-white/40 shadow-inner flex flex-col relative overflow-hidden" id="arena-track">
+                     <!-- Checkerboard Finish Line -->
+                     <div class="absolute right-[5%] top-0 bottom-0 w-12 sm:w-16 checkerboard-bg z-0 opacity-90 border-l-4 border-white drop-shadow-xl"></div>
+                     <div class="absolute right-[5%] -top-4 w-12 sm:w-16 text-center z-10 font-black text-white text-xl drop-shadow-md">FINISH</div>
+                     <!-- Lanes injected here via JS -->
                 </div>
             </div>
         </section>
@@ -312,14 +385,31 @@
         var supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // State Global
-        var currentUser = null; // Teacher profile
-        var activeSession = null; // Session being managed or played
-        var myPlayerRecord = null; // Student's disposable profile
+        var currentUser = null; 
+        var activeSession = null; 
+        var myPlayerRecord = null; 
         
         var selectedAvatar = '🦊';
         var allQuestions = [];
         var currentQuizIndex = 0;
         var arenaSubscription = null;
+        var arenaMaxScore = 10; // For track scaling
+
+        // Avatar List
+        const AVATAR_LIST = ['🦊','🐼','🐯','🐸','🐶','🐱','🐭','🐹','🐰','🐻','🐨','🐷','🐮','🐵','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞'];
+
+        // Init Avatars
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('avatar-selection');
+            AVATAR_LIST.forEach(a => {
+                const btn = document.createElement('button');
+                btn.className = "avatar-btn text-3xl sm:text-4xl p-2 rounded-2xl hover:bg-white border-4 border-transparent hover:border-slate-200 transition-all transform hover:scale-110";
+                btn.innerText = a;
+                btn.onclick = () => selectAvatar(a);
+                container.appendChild(btn);
+            });
+            selectAvatar('🦊'); // Default
+        });
 
         // Cek sesi login guru saat web dimuat
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -334,6 +424,7 @@
         // ==========================================
         function showModal(title, msg, type = 'alert', onOk = null) {
             const modal = document.getElementById('custom-modal');
+            const inner = modal.querySelector('div');
             document.getElementById('modal-title').innerText = title;
             document.getElementById('modal-msg').innerText = msg;
             const input = document.getElementById('modal-input');
@@ -344,14 +435,19 @@
             input.value = '';
             btnCancel.classList.add('hidden');
             
-            // Recreate button to clear previous event listeners
             const newBtnOk = btnOk.cloneNode(true);
             btnOk.parentNode.replaceChild(newBtnOk, btnOk);
             const newBtnCancel = btnCancel.cloneNode(true);
             btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
 
+            const closeModal = () => {
+                inner.classList.remove('scale-100', 'opacity-100');
+                inner.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+
             newBtnOk.onclick = () => {
-                modal.classList.add('hidden');
+                closeModal();
                 if(onOk) {
                     if(type === 'prompt') onOk(input.value);
                     else onOk();
@@ -361,16 +457,26 @@
             if(type === 'prompt') {
                 input.classList.remove('hidden');
                 newBtnCancel.classList.remove('hidden');
+                setTimeout(() => input.focus(), 100);
             } else if(type === 'confirm') {
                 newBtnCancel.classList.remove('hidden');
             }
 
-            newBtnCancel.onclick = () => modal.classList.add('hidden');
+            newBtnCancel.onclick = closeModal;
+            
             modal.classList.remove('hidden');
+            // Animation triggers
+            inner.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                inner.classList.remove('scale-95', 'opacity-0');
+                inner.classList.add('scale-100', 'opacity-100');
+            }, 10);
         }
 
         function showView(viewId) {
-            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.view-section').forEach(el => {
+                el.classList.remove('active');
+            });
             document.getElementById(viewId).classList.add('active');
             
             // Atur Navbar
@@ -378,7 +484,6 @@
                 document.getElementById('navbar').classList.add('hidden');
             } else {
                 document.getElementById('navbar').classList.remove('hidden');
-                document.getElementById('btn-logout').classList.remove('hidden');
                 document.getElementById('nav-user').innerText = currentUser?.email?.split('@')[0] || 'Guru';
             }
 
@@ -390,10 +495,10 @@
         function selectAvatar(icon) {
             selectedAvatar = icon;
             document.querySelectorAll('.avatar-btn').forEach(btn => {
-                btn.classList.remove('bg-teal-100', 'border-teal-500');
+                btn.classList.remove('bg-white', 'border-teal-400', 'shadow-md');
                 btn.classList.add('border-transparent');
                 if(btn.innerText === icon) {
-                    btn.classList.add('bg-teal-100', 'border-teal-500');
+                    btn.classList.add('bg-white', 'border-teal-400', 'shadow-md');
                     btn.classList.remove('border-transparent');
                 }
             });
@@ -407,7 +512,7 @@
             const pass = document.getElementById('t-pass').value;
             const err = document.getElementById('t-auth-error');
             
-            if(!email || !pass) return err.innerText = "Isi email & password", err.classList.remove('hidden');
+            if(!email || !pass) return err.innerText = "Isi email & sandi", err.classList.remove('hidden');
             
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password: pass });
             if(error) return err.innerText = error.message, err.classList.remove('hidden');
@@ -421,12 +526,12 @@
             const pass = document.getElementById('t-pass').value;
             const err = document.getElementById('t-auth-error');
             
-            if(!email || pass.length < 6) return err.innerText = "Email valid & pass min 6 char", err.classList.remove('hidden');
+            if(!email || pass.length < 6) return err.innerText = "Email valid & sandi min 6 char", err.classList.remove('hidden');
             
             const { data, error } = await supabaseClient.auth.signUp({ email, password: pass });
             if(error) return err.innerText = error.message, err.classList.remove('hidden');
             
-            showModal("Sukses", "Berhasil daftar! Silakan Login.", "alert");
+            showModal("Berhasil!", "Akun terdaftar! Silakan Login masuk.", "alert");
         }
 
         async function logoutTeacher() {
@@ -437,36 +542,35 @@
 
         async function loadSessions() {
             const list = document.getElementById('session-list');
-            list.innerHTML = '<div class="col-span-3 text-center text-slate-400">Memuat Sesi...</div>';
+            list.innerHTML = '<div class="col-span-full text-center text-slate-400 font-bold py-10"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3 block"></i> Memuat Sesi...</div>';
             
             const { data, error } = await supabaseClient.from('sessions').select('*').eq('teacher_id', currentUser.id).order('created_at', { ascending: false });
-            if(error) return list.innerHTML = `<div class="text-red-500">Error: ${error.message}</div>`;
+            if(error) return list.innerHTML = `<div class="text-rose-500 font-bold p-4 bg-rose-50 rounded-xl">Error: ${error.message}</div>`;
             
             list.innerHTML = '';
-            if(data.length === 0) return list.innerHTML = `<div class="col-span-3 text-center bg-white p-10 rounded-xl">Belum ada sesi yang dibuat.</div>`;
+            if(data.length === 0) return list.innerHTML = `<div class="col-span-full text-center bg-white border-2 border-dashed border-slate-200 p-12 rounded-[2rem] text-slate-400 font-bold text-lg"><i class="fa-solid fa-box-open text-4xl mb-3 block"></i>Belum ada sesi kuis yang dibuat.</div>`;
 
             data.forEach(s => {
                 const isLive = s.status === 'live';
                 const div = document.createElement('div');
-                div.className = "bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer";
+                div.className = "bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border-2 border-slate-100 hover:border-teal-300 hover:shadow-xl transition-all cursor-pointer group";
                 div.onclick = () => openSessionManage(s);
                 div.innerHTML = `
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="px-2 py-1 rounded text-xs font-bold ${isLive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'} uppercase">${s.status}</span>
-                        <span class="font-mono font-bold text-slate-400 text-sm">PIN: ${s.pin}</span>
+                    <div class="flex justify-between items-start mb-6">
+                        <span class="px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black tracking-wider ${isLive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'} uppercase">${s.status}</span>
+                        <span class="font-mono font-black text-slate-400 text-sm bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">PIN: <span class="text-slate-700">${s.pin}</span></span>
                     </div>
-                    <h3 class="text-xl font-bold text-slate-800 mb-2">${s.title}</h3>
-                    <p class="text-sm text-slate-500"><i class="fa-solid fa-clock"></i> ${new Date(s.created_at).toLocaleDateString()}</p>
+                    <h3 class="text-2xl font-black text-slate-800 mb-2 group-hover:text-teal-600 transition-colors line-clamp-2">${s.title}</h3>
+                    <p class="text-sm text-slate-400 font-bold"><i class="fa-solid fa-calendar-day mr-1"></i> ${new Date(s.created_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
                 `;
                 list.appendChild(div);
             });
         }
 
         async function createSession() {
-            showModal("Buat Sesi Baru", "Masukkan nama sesi kuis (misal: Kuis Asam Basa Kelas XA):", "prompt", async (title) => {
+            showModal("Buat Sesi Baru", "Masukkan judul sesi kuis (misal: Latihan Asam Basa XA):", "prompt", async (title) => {
                 if(!title || !title.trim()) return;
                 
-                // Generate Random 6 Char PIN
                 const pin = Math.random().toString(36).substring(2, 8).toUpperCase();
                 
                 const { error } = await supabaseClient.from('sessions').insert({
@@ -487,15 +591,15 @@
             const btnLive = document.getElementById('btn-toggle-live');
             
             if(session.status === 'live') {
-                statusBadge.className = "px-3 py-1 rounded font-bold text-xs uppercase bg-green-100 text-green-700";
-                statusBadge.innerText = "LIVE (Siswa bisa join)";
-                btnLive.className = "bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-bold shadow";
-                btnLive.innerHTML = '<i class="fa-solid fa-stop"></i> Tutup Sesi';
+                statusBadge.className = "px-4 py-1.5 rounded-lg font-black text-xs uppercase tracking-wider bg-emerald-100 text-emerald-700";
+                statusBadge.innerText = "SESI LIVE";
+                btnLive.className = "flex-1 lg:flex-none bg-rose-500 hover:bg-rose-600 text-white px-6 py-3.5 rounded-xl font-black shadow-lg shadow-rose-500/20 transition-all flex justify-center items-center gap-2";
+                btnLive.innerHTML = '<i class="fa-solid fa-lock"></i> Tutup Gerbang';
             } else {
-                statusBadge.className = "px-3 py-1 rounded font-bold text-xs uppercase bg-slate-100 text-slate-500";
+                statusBadge.className = "px-4 py-1.5 rounded-lg font-black text-xs uppercase tracking-wider bg-slate-100 text-slate-500";
                 statusBadge.innerText = "DRAFT";
-                btnLive.className = "bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow";
-                btnLive.innerHTML = '<i class="fa-solid fa-play"></i> Mulai Sesi (Live)';
+                btnLive.className = "flex-1 lg:flex-none bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-black shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2";
+                btnLive.innerHTML = '<i class="fa-solid fa-play"></i> Buka Gerbang (Live)';
             }
 
             showView('session-manage');
@@ -508,13 +612,13 @@
             if(error) return showModal("Gagal", "Gagal mengubah status: " + error.message, "alert");
             
             activeSession.status = newStatus;
-            openSessionManage(activeSession); // Refresh UI
+            openSessionManage(activeSession); 
         }
 
         function switchSessionTab(tab) {
-            document.getElementById('tab-soal').className = "pb-2 px-4 font-bold text-slate-400 hover:text-slate-600";
-            document.getElementById('tab-siswa').className = "pb-2 px-4 font-bold text-slate-400 hover:text-slate-600";
-            document.getElementById(`tab-${tab}`).className = "pb-2 px-4 font-bold text-teal-600 border-b-4 border-teal-500";
+            document.getElementById('tab-soal').className = "pb-3 px-2 sm:px-6 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors";
+            document.getElementById('tab-siswa').className = "pb-3 px-2 sm:px-6 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors";
+            document.getElementById(`tab-${tab}`).className = "pb-3 px-2 sm:px-6 font-black text-lg text-teal-600 border-b-4 border-teal-500 transition-colors";
             
             if(tab === 'soal') {
                 document.getElementById('sm-soal-view').classList.remove('hidden');
@@ -527,15 +631,15 @@
             }
         }
 
-        // --- Question Management inside Session ---
+        // --- Question Management ---
         async function loadSessionQuestions() {
             const list = document.getElementById('sm-q-list');
-            list.innerHTML = "Memuat...";
+            list.innerHTML = '<div class="text-center py-6 text-slate-400 font-bold"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
             const { data, error } = await supabaseClient.from('questions').select('*').eq('session_id', activeSession.id).order('created_at', { ascending: true });
-            if(error) return list.innerHTML = `<div class="text-red-500">Error: ${error.message}</div>`;
+            if(error) return list.innerHTML = `<div class="text-rose-500 font-bold bg-rose-50 p-4 rounded-xl">Error: ${error.message}</div>`;
 
             list.innerHTML = '';
-            if(data.length === 0) return list.innerHTML = `<div class="p-6 text-center text-slate-500 bg-slate-50 rounded">Belum ada soal di sesi ini.</div>`;
+            if(data.length === 0) return list.innerHTML = `<div class="p-10 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed border-slate-200">Belum ada pertanyaan. Tambahkan soal pertama!</div>`;
 
             data.forEach((q, i) => {
                 let opts = q.options;
@@ -543,18 +647,20 @@
                 if(Array.isArray(opts)) opts = opts.join(', ');
 
                 const div = document.createElement('div');
-                div.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4";
+                div.className = "bg-white p-5 sm:p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row gap-5 hover:border-teal-200 transition-colors";
                 div.innerHTML = `
-                    <div class="bg-slate-800 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0">${i+1}</div>
+                    <div class="bg-teal-100 text-teal-700 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 shadow-inner">${i+1}</div>
                     <div class="flex-1">
-                        <span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">${q.category || '-'}</span>
-                        <p class="font-bold text-lg mt-1">${q.q}</p>
-                        ${q.imageBase64 ? `<img src="${q.imageBase64}" class="h-16 mt-2 rounded border">` : ''}
-                        <p class="text-sm text-slate-600 mt-2">Opsi: ${opts}</p>
-                        <p class="text-sm font-bold text-teal-600">Kunci: ${q.answer}</p>
+                        <span class="text-[10px] font-black tracking-wider text-sky-600 bg-sky-50 px-3 py-1 rounded-lg uppercase border border-sky-100">${q.category || '-'}</span>
+                        <p class="font-black text-xl mt-3 text-slate-800 leading-snug">${q.q}</p>
+                        ${q.imageBase64 ? `<div class="mt-4 inline-block p-2 bg-slate-50 border border-slate-200 rounded-xl"><img src="${q.imageBase64}" class="h-20 rounded-lg object-contain"></div>` : ''}
+                        <div class="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <p class="text-sm font-bold text-slate-500 mb-1">Pilihan: <span class="font-medium text-slate-700">${opts}</span></p>
+                            <p class="text-sm font-black text-emerald-600"><i class="fa-solid fa-check-circle mr-1"></i> Jawaban: ${q.answer}</p>
+                        </div>
                     </div>
-                    <div class="flex gap-2 shrink-0 h-fit">
-                        <button onclick="deleteQuestion('${q.id}')" class="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded"><i class="fa-solid fa-trash"></i></button>
+                    <div class="flex md:flex-col gap-2 shrink-0 h-fit justify-end">
+                        <button onclick="deleteQuestion('${q.id}')" class="p-3 text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-colors font-bold"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 `;
                 list.appendChild(div);
@@ -564,7 +670,7 @@
         document.getElementById('q-image').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if(file) {
-                if(file.size > 500000) return showModal("Peringatan", "Ukuran maksimal 500KB", "alert");
+                if(file.size > 500000) return showModal("Peringatan", "Ukuran maksimal gambar 500KB agar arena tidak berat.", "alert");
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     document.getElementById('q-image-base64').value = reader.result;
@@ -581,21 +687,29 @@
         }
         function hideQuestionForm() {
             document.getElementById('q-form-container').classList.add('hidden');
+            // reset form
+            document.getElementById('q-text').value = '';
+            document.getElementById('q-options').value = '';
+            document.getElementById('q-answer').value = '';
+            document.getElementById('q-image-base64').value = '';
+            document.getElementById('q-caption').value = '';
+            document.getElementById('q-image').value = '';
+            document.getElementById('q-image-preview').classList.add('hidden');
         }
 
         async function saveQuestion() {
-            const qtext = document.getElementById('q-text').value;
-            const options = document.getElementById('q-options').value.split(',').map(s=>s.trim());
+            const qtext = document.getElementById('q-text').value.trim();
+            const options = document.getElementById('q-options').value.split(',').map(s=>s.trim()).filter(s=>s);
             const answer = document.getElementById('q-answer').value.trim();
             const category = document.getElementById('q-kategori').value;
             const imageBase64 = document.getElementById('q-image-base64').value;
-            const caption = document.getElementById('q-caption').value;
+            const caption = document.getElementById('q-caption').value.trim();
 
-            if(!qtext || !answer || options.length < 2) return showModal("Peringatan", "Lengkapi data soal.", "alert");
-            if(!options.includes(answer)) return showModal("Peringatan", "Jawaban Benar harus persis dengan salah satu opsi.", "alert");
+            if(!qtext || !answer || options.length < 2) return showModal("Perhatian", "Lengkapi minimal pertanyaan, jawaban, dan 2 opsi jawaban.", "alert");
+            if(!options.includes(answer)) return showModal("Perhatian", "Jawaban Benar harus diketik persis sama dengan salah satu opsi.", "alert");
 
             const payload = {
-                session_id: activeSession.id, // Bind to current session
+                session_id: activeSession.id,
                 q: qtext,
                 options: JSON.stringify(options),
                 answer: answer,
@@ -611,7 +725,7 @@
         }
 
         async function deleteQuestion(id) {
-            showModal("Konfirmasi", "Hapus soal ini?", "confirm", async () => {
+            showModal("Hapus Soal", "Anda yakin ingin membuang soal ini dari lintasan?", "confirm", async () => {
                 await supabaseClient.from('questions').delete().eq('id', id);
                 loadSessionQuestions();
             });
@@ -620,36 +734,42 @@
         // --- Students Tab Management ---
         async function loadSessionStudents() {
             const list = document.getElementById('sm-s-list');
-            list.innerHTML = "Memuat...";
+            list.innerHTML = '<div class="col-span-full text-center py-6 text-slate-400 font-bold"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
             const { data: players, error } = await supabaseClient.from('players').select('*').eq('session_id', activeSession.id).order('score', { ascending: false });
-            if (error) return list.innerHTML = `Error: ${error.message}`;
+            if (error) return list.innerHTML = `<div class="col-span-full bg-rose-50 text-rose-500 font-bold p-4 rounded-xl">Error: ${error.message}</div>`;
 
             list.innerHTML = '';
-            if(players.length === 0) return list.innerHTML = `<div class="p-6 text-center text-slate-500 bg-white rounded col-span-2 border">Belum ada siswa yang join sesi ini.</div>`;
+            if(players.length === 0) return list.innerHTML = `<div class="col-span-full p-10 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed border-slate-200">Lintasan masih kosong. Menunggu siswa...</div>`;
 
-            players.forEach(p => {
-                let cats = p.categoryScores || {};
+            players.forEach((p, index) => {
                 const div = document.createElement('div');
-                div.className = "bg-white p-5 rounded-xl shadow-sm border border-slate-200";
+                div.className = "bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 relative overflow-hidden";
                 div.innerHTML = `
-                    <div class="flex items-center gap-3 mb-3 border-b pb-3">
-                        <span class="text-4xl">${p.avatar}</span>
+                    <div class="absolute top-0 right-0 bg-slate-100 text-slate-400 font-black px-4 py-2 rounded-bl-2xl text-xl opacity-50">#${index+1}</div>
+                    <div class="flex items-center gap-4 mb-4 border-b border-slate-100 pb-4">
+                        <span class="text-5xl drop-shadow-md">${p.avatar}</span>
                         <div>
-                            <h3 class="font-bold text-lg leading-tight">${p.name}</h3>
-                            <span class="text-teal-600 font-black">${p.score} Poin</span> | <span class="text-xs text-slate-400">Progres ${Math.round(p.progress)}%</span>
+                            <h3 class="font-black text-xl text-slate-800 leading-tight">${p.name}</h3>
+                            <div class="mt-1 flex gap-2 text-sm font-bold">
+                                <span class="text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">${p.score} pt</span>
+                                <span class="text-sky-500 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">${Math.round(p.progress)}%</span>
+                            </div>
                         </div>
                     </div>
-                    <p class="text-sm text-slate-600 italic bg-slate-50 p-2 rounded border border-slate-100 mb-2">
-                        ${p.refleksi ? `"${p.refleksi}"` : "Belum ada refleksi."}
-                    </p>
-                    <button onclick="kickPlayer('${p.id}')" class="text-xs text-red-500 font-bold hover:underline">Hapus Data Siswa Ini</button>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4 min-h-[80px]">
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1"><i class="fa-solid fa-comment-dots"></i> Refleksi Siswa</p>
+                        <p class="text-sm text-slate-600 font-medium italic">
+                            ${p.refleksi ? `"${p.refleksi}"` : "Sedang berlari di lintasan..."}
+                        </p>
+                    </div>
+                    <button onclick="kickPlayer('${p.id}')" class="w-full text-sm text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white py-2 rounded-xl font-bold transition-colors">Diskualifikasi</button>
                 `;
                 list.appendChild(div);
             });
         }
 
         async function kickPlayer(id) {
-            showModal("Konfirmasi", "Hapus siswa dari sesi ini?", "confirm", async () => {
+            showModal("Diskualifikasi", "Hapus siswa ini dari lintasan arena?", "confirm", async () => {
                 await supabaseClient.from('players').delete().eq('id', id);
                 loadSessionStudents();
             });
@@ -664,25 +784,25 @@
             const err = document.getElementById('join-error');
             const btn = document.getElementById('btn-join');
 
-            if(pin.length !== 6 || !name) return err.innerText = "Masukkan PIN 6 Digit dan Namamu!", err.classList.remove('hidden');
+            if(pin.length !== 6 || !name) return err.innerText = "Masukkan PIN 6 Karakter & Namamu!", err.classList.remove('hidden');
 
-            btn.innerText = "MENCARI ARENA..."; btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> MEMASUKI KUIS...'; 
+            btn.disabled = true;
 
-            // Cari Sesi yang Valid & Live
             const { data: sessData, error: sessErr } = await supabaseClient.from('sessions')
                 .select('*').eq('pin', pin).eq('status', 'live').single();
 
             if(sessErr || !sessData) {
-                btn.innerText = "MASUK ARENA"; btn.disabled = false;
-                return err.innerText = "PIN Tidak Valid atau Sesi belum dimulai Guru.", err.classList.remove('hidden');
+                btn.innerHTML = "MULAI KUIS"; btn.disabled = false;
+                return err.innerText = "PIN Tidak Valid atau Gerbang Kuis belum dibuka.", err.classList.remove('hidden');
             }
 
             activeSession = sessData;
 
-            // Buat Profil Disposable Siswa
+            // Buat Profil
             const { data: pData, error: pErr } = await supabaseClient.from('players').insert({
                 session_id: activeSession.id,
-                name: name,
+                name: name.substring(0,15),
                 avatar: selectedAvatar,
                 score: 0,
                 progress: 0,
@@ -691,12 +811,12 @@
             }).select().single();
 
             if(pErr) {
-                btn.innerText = "MASUK ARENA"; btn.disabled = false;
-                return err.innerText = "Gagal membuat profil: " + pErr.message, err.classList.remove('hidden');
+                btn.innerHTML = "MULAI KUIS"; btn.disabled = false;
+                return err.innerText = "Gagal masuk: " + pErr.message, err.classList.remove('hidden');
             }
 
             myPlayerRecord = pData;
-            btn.innerText = "MASUK ARENA"; btn.disabled = false;
+            btn.innerHTML = "MULAI KUIS"; btn.disabled = false;
             
             showView('quiz');
         }
@@ -711,19 +831,19 @@
             document.getElementById('quiz-player-name').innerText = myPlayerRecord.name;
             document.getElementById('quiz-player-score').innerText = myPlayerRecord.score + " Poin";
 
-            // Tarik soal KHUSUS SESI INI
             let { data: questions, error } = await supabaseClient.from('questions').select('*')
                 .eq('session_id', activeSession.id).order('created_at', { ascending: true });
             
-            if (error) return showModal("Error", "Gagal mengambil soal.", "alert");
+            if (error) return showModal("Error", "Gagal menyiapkan soal kuis.", "alert");
             
             allQuestions = questions;
             currentQuizIndex = 0;
 
             if(allQuestions.length === 0) {
-                document.getElementById('quiz-loading').innerText = "Belum ada soal kuis di sesi ini.";
+                document.getElementById('quiz-loading').innerHTML = "<div class='text-center font-black text-slate-500'>Kuis belum siap.<br>Guru belum menambahkan soal.</div>";
                 return;
             }
+            document.getElementById('quiz-total').innerText = allQuestions.length;
 
             document.getElementById('quiz-loading').classList.add('hidden');
             document.getElementById('quiz-content').classList.remove('hidden');
@@ -732,10 +852,12 @@
 
         function renderQuestion() {
             const q = allQuestions[currentQuizIndex];
-            document.getElementById('quiz-progress').innerText = `${currentQuizIndex + 1}/${allQuestions.length}`;
-            document.getElementById('quiz-bar').style.width = `${(currentQuizIndex / allQuestions.length) * 100}%`;
+            document.getElementById('quiz-progress').innerText = currentQuizIndex + 1;
             
-            document.getElementById('quiz-category').innerText = q.category || 'Pahami Konsep';
+            const progressPct = (currentQuizIndex / allQuestions.length) * 100;
+            document.getElementById('quiz-bar').style.width = `${progressPct}%`;
+            
+            document.getElementById('quiz-category').innerText = q.category || 'Tantangan';
             document.getElementById('quiz-qtext').innerText = q.q;
 
             const imgContainer = document.getElementById('quiz-image-container');
@@ -743,6 +865,7 @@
                 imgContainer.classList.remove('hidden');
                 document.getElementById('quiz-image').src = q.imageBase64;
                 document.getElementById('quiz-caption').innerText = q.caption || '';
+                document.getElementById('quiz-caption').style.display = q.caption ? 'block' : 'none';
             } else imgContainer.classList.add('hidden');
 
             const optContainer = document.getElementById('quiz-options');
@@ -753,42 +876,60 @@
 
             opts.forEach(opt => {
                 const btn = document.createElement('button');
-                btn.className = "opt-btn p-4 text-lg font-bold rounded-2xl border-4 border-slate-200 bg-white hover:border-teal-400 hover:bg-teal-50 transition-all";
-                btn.innerText = opt;
+                btn.className = "opt-btn p-5 sm:p-6 text-xl font-black rounded-[1.5rem] border-[4px] border-slate-100 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700 hover:shadow-lg transition-all transform active:scale-95 text-left flex items-center justify-between group";
+                btn.innerHTML = `<span>${opt}</span> <i class="fa-solid fa-circle-chevron-right text-slate-200 group-hover:text-teal-400 text-2xl"></i>`;
                 btn.onclick = () => handleAnswer(btn, opt, q.answer, q.category);
                 optContainer.appendChild(btn);
             });
         }
 
         async function handleAnswer(btnEl, selectedOpt, correctOpt, category) {
-            document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+            document.querySelectorAll('.opt-btn').forEach(b => {
+                b.disabled = true;
+                b.classList.remove('hover:border-teal-400', 'hover:bg-teal-50', 'hover:shadow-lg', 'active:scale-95');
+                b.classList.add('opacity-50');
+            });
+            btnEl.classList.remove('opacity-50');
             
             const isCorrect = selectedOpt === correctOpt;
-            const fb = document.getElementById('quiz-feedback');
-            fb.classList.remove('hidden', 'text-green-500', 'text-red-500');
+            const fbBox = document.getElementById('feedback-box');
+            const fbIcon = document.getElementById('feedback-icon');
+            const fbText = document.getElementById('feedback-text');
+            const fbOverlay = document.getElementById('quiz-feedback');
             
+            fbOverlay.classList.remove('hidden');
+            
+            // Reflow to ensure animation triggers
+            void fbBox.offsetWidth;
+
             if(isCorrect) {
-                btnEl.classList.replace('border-slate-200', 'border-green-500');
-                btnEl.classList.replace('bg-white', 'bg-green-500');
-                btnEl.classList.add('text-white');
-                fb.innerText = "Tepat! Mendaki naik...";
-                fb.classList.add('text-green-500');
+                btnEl.classList.replace('border-slate-100', 'border-emerald-500');
+                btnEl.classList.replace('bg-white', 'bg-emerald-500');
+                btnEl.classList.replace('text-slate-700', 'text-white');
+                btnEl.querySelector('i').classList.replace('text-slate-200', 'text-white');
+                
+                fbBox.className = "px-10 py-8 rounded-[2rem] font-black text-3xl shadow-2xl transform scale-100 opacity-100 transition-all duration-300 flex flex-col items-center text-center gap-3 bg-white border-4 border-emerald-400 text-emerald-500";
+                fbIcon.className = "fa-solid fa-bolt text-7xl text-amber-400 drop-shadow-md";
+                fbText.innerText = "+10 KECEPATAN!";
                 
                 myPlayerRecord.score += 10;
                 if(!myPlayerRecord.categoryScores) myPlayerRecord.categoryScores = {};
                 myPlayerRecord.categoryScores[category] = (myPlayerRecord.categoryScores[category] || 0) + 10;
                 document.getElementById('quiz-player-score').innerText = myPlayerRecord.score + " Poin";
             } else {
-                btnEl.classList.replace('border-slate-200', 'border-red-500');
-                btnEl.classList.replace('bg-white', 'bg-red-500');
-                btnEl.classList.add('text-white');
-                fb.innerText = "Salah! Tergelincir turun...";
-                fb.classList.add('text-red-500');
+                btnEl.classList.replace('border-slate-100', 'border-rose-500');
+                btnEl.classList.replace('bg-white', 'bg-rose-500');
+                btnEl.classList.replace('text-slate-700', 'text-white');
+                btnEl.querySelector('i').classList.replace('text-slate-200', 'text-white');
+                
+                fbBox.className = "px-10 py-8 rounded-[2rem] font-black text-3xl shadow-2xl transform scale-100 opacity-100 transition-all duration-300 flex flex-col items-center text-center gap-3 bg-white border-4 border-rose-400 text-rose-500";
+                fbIcon.className = "fa-solid fa-triangle-exclamation text-7xl text-rose-500 drop-shadow-md";
+                fbText.innerText = "TERSANDUNG!";
             }
 
             myPlayerRecord.progress = ((currentQuizIndex + 1) / allQuestions.length) * 100;
 
-            // Fire and Forget update
+            // Update Async
             supabaseClient.from('players').update({
                 score: myPlayerRecord.score,
                 progress: myPlayerRecord.progress,
@@ -796,47 +937,60 @@
             }).eq('id', myPlayerRecord.id).then();
 
             setTimeout(() => {
-                fb.classList.add('hidden');
+                fbBox.classList.remove('scale-100', 'opacity-100');
+                fbBox.classList.add('scale-50', 'opacity-0');
+                setTimeout(() => fbOverlay.classList.add('hidden'), 300);
+
                 currentQuizIndex++;
                 if(currentQuizIndex < allQuestions.length) renderQuestion();
                 else {
-                    document.getElementById('quiz-content').classList.add('hidden');
-                    document.getElementById('reflection-content').classList.remove('hidden');
+                    // Update the visual bar to 100% before transitioning
+                    document.getElementById('quiz-bar').style.width = '100%';
+                    
+                    setTimeout(() => {
+                        document.getElementById('quiz-content').classList.add('hidden');
+                        document.getElementById('reflection-content').classList.remove('hidden');
+                    }, 500); // Shorter delay since avatar animation is removed
                 }
-            }, 1500);
+            }, 1200);
         }
 
         async function submitReflection() {
-            const txt = document.getElementById('refleksi-text').value;
+            const txt = document.getElementById('refleksi-text').value.trim() || "Selesai mengerjakan!";
             await supabaseClient.from('players').update({ refleksi: txt }).eq('id', myPlayerRecord.id);
             
             document.getElementById('reflection-content').classList.add('hidden');
             document.getElementById('finish-content').classList.remove('hidden');
-            document.getElementById('finish-score').innerText = myPlayerRecord.score + " Poin";
+            document.getElementById('finish-score').innerText = myPlayerRecord.score;
         }
 
         function logoutStudent() {
             myPlayerRecord = null;
             activeSession = null;
+            document.getElementById('join-pin').value = '';
+            document.getElementById('join-name').value = '';
             showView('landing');
         }
 
         // ==========================================
-        // ARENA (LIVE TRACKER)
+        // ARENA (SPRINT TRACKER)
         // ==========================================
-        function openArenaTeacher() {
+        async function openArenaTeacher() {
             if(!activeSession) return showModal("Peringatan", "Buka detail sesi dulu!", "alert");
             document.getElementById('arena-pin-display').innerText = activeSession.pin;
+            
+            // Hitung Max Score untuk Scaling Lintasan
+            const { data: qData } = await supabaseClient.from('questions').select('id').eq('session_id', activeSession.id);
+            arenaMaxScore = (qData && qData.length > 0) ? qData.length * 10 : 10;
+            
             showView('arena');
             fetchPlayersArena();
             
-            // Subscribe ke tabel players untuk REALTIME
             if(arenaSubscription) supabaseClient.removeChannel(arenaSubscription);
             arenaSubscription = supabaseClient.channel('custom-all-channel')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, payload => {
-                    // Update arena HANYA jika player yang berubah adalah bagian dari Sesi ini
                     if(payload.new && payload.new.session_id === activeSession.id) fetchPlayersArena();
-                    if(payload.old && !payload.new) fetchPlayersArena(); // if deleted
+                    if(payload.old && !payload.new) fetchPlayersArena();
                 })
                 .subscribe();
         }
@@ -848,46 +1002,61 @@
 
         async function fetchPlayersArena() {
             let { data: players, error } = await supabaseClient.from('players').select('*')
-                .eq('session_id', activeSession.id); // Filter pemain by Sesi
+                .eq('session_id', activeSession.id); 
                 
             if (error) return console.error(error);
             
-            players.sort((a, b) => b.progress - a.progress || b.score - a.score);
+            // Sort by score first (to put leader in front), then progress
+            players.sort((a, b) => b.score - a.score || b.progress - a.progress);
             document.getElementById('arena-player-count').innerText = players.length;
             
             const track = document.getElementById('arena-track');
-            Array.from(track.children).forEach(c => { if(!c.classList.contains('bg-gradient-to-r')) c.remove() });
+            // Remove old lanes (keep the finish line divs)
+            Array.from(track.children).forEach(c => {
+                if(!c.classList.contains('absolute') || c.classList.contains('z-10') && c.classList.contains('relative')) {
+                    if(!c.innerText.includes('FINISH') && !c.classList.contains('checkerboard-bg')) c.remove();
+                }
+            });
+
+            if(players.length === 0) {
+                return;
+            }
 
             players.forEach((p, idx) => {
-                const isWinner = p.progress >= 100;
-                const xPos = 10 + (idx * (80 / Math.max(1, players.length - 1 || 1)));
+                // Kalkulasi posisi X berdasarkan Score. Max lebar arena = 90% (supaya ga tembus layar)
+                let pct = 0;
+                if(arenaMaxScore > 0) {
+                    pct = (p.score / arenaMaxScore) * 90;
+                }
+                pct = Math.min(95, Math.max(0, pct)); // bound check
                 
-                const div = document.createElement('div');
-                div.className = "absolute transition-all duration-1000 ease-out flex flex-col items-center";
-                div.style.bottom = `${Math.max(5, p.progress)}%`;
-                div.style.left = `${xPos}%`;
-                div.style.transform = 'translateX(-50%)';
-                div.style.zIndex = Math.floor(p.progress);
+                const isFinished = p.progress >= 100;
+                
+                const lane = document.createElement('div');
+                lane.className = "relative h-[4.5rem] sm:h-[5.5rem] w-full border-b-[3px] border-dashed border-white/20 flex items-center z-10 box-border px-4 shrink-0";
+                
+                lane.innerHTML = `
+                    <div class="absolute transition-all duration-[1500ms] ease-out flex items-center gap-2 sm:gap-4 group" style="left: ${pct}%; transform: translateX(${pct > 50 ? '-50%' : '0%'});">
+                        
+                        <div class="flex flex-col items-center">
+                            <div class="text-[10px] sm:text-xs font-black bg-white/90 text-slate-800 px-2 py-0.5 rounded shadow-md whitespace-nowrap mb-0.5">${p.score} pt</div>
+                            <div class="text-3xl sm:text-5xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] ${isFinished ? 'animate-bounce' : 'animate-[pulse_1s_ease-in-out_infinite]'} relative">
+                                ${p.avatar}
+                                ${isFinished ? '<i class="fa-solid fa-medal absolute -bottom-2 -right-2 text-xl text-amber-400 drop-shadow-md"></i>' : ''}
+                            </div>
+                        </div>
 
-                div.innerHTML = `
-                    <div class="text-xs font-black px-2 py-0.5 rounded-full mb-1 shadow-lg ${isWinner ? 'bg-yellow-400 text-black animate-pulse' : 'bg-slate-800 text-white'}">${p.score} pt</div>
-                    <div class="text-5xl md:text-6xl drop-shadow-2xl ${isWinner ? 'animate-bounce' : ''}">${p.avatar}</div>
-                    <div class="bg-white/90 backdrop-blur text-slate-900 text-xs font-bold px-3 py-1 rounded-full shadow-lg mt-1 max-w-[100px] truncate text-center">${p.name}</div>
+                        <div class="bg-slate-900/80 backdrop-blur border-2 border-white/20 text-white px-3 sm:px-4 py-1.5 rounded-xl shadow-xl flex flex-col min-w-[100px] max-w-[140px] sm:max-w-[180px]">
+                            <span class="text-xs sm:text-sm font-black truncate">${p.name}</span>
+                            <div class="w-full bg-white/20 h-1.5 rounded-full mt-1 overflow-hidden">
+                                <div class="h-full bg-emerald-400" style="width: ${p.progress}%"></div>
+                            </div>
+                        </div>
+                    </div>
                 `;
-                track.appendChild(div);
-            });
-
-            const lb = document.getElementById('arena-leaderboard');
-            lb.innerHTML = '';
-            players.slice(0, 5).forEach((p, i) => {
-                lb.innerHTML += `
-                <div class="flex justify-between items-center text-sm border-b border-white/10 pb-1">
-                    <span class="flex items-center gap-2"><span class="text-slate-400 w-3">${i+1}.</span> <span>${p.avatar} ${p.name}</span></span>
-                    <span class="font-bold text-teal-400">${p.score}</span>
-                </div>`;
+                track.appendChild(lane);
             });
         }
-
     </script>
 </body>
 </html>
