@@ -41,6 +41,13 @@
         
         /* Hide Navbar by default for standalone views */
         #navbar.hidden { display: none !important; }
+
+        /* Typing Indicator Animation */
+        .typing-dot { animation: typing 1.4s infinite ease-in-out; }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-4px); opacity: 1; } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
@@ -70,6 +77,45 @@
             <div class="flex justify-end gap-3">
                 <button id="modal-btn-cancel" class="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hidden hover:bg-slate-200 transition-colors">Batal</button>
                 <button id="modal-btn-ok" class="px-5 py-3 bg-teal-500 text-white rounded-xl font-bold hover:bg-teal-600 transition-colors shadow-lg shadow-teal-500/30">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIDGET ASISTEN GURU AI (Tersembunyi by default, muncul saat Guru Login) -->
+    <div id="ai-widget-container" class="hidden">
+        <button onclick="toggleAiChat()" class="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-teal-500 to-sky-500 hover:from-teal-600 hover:to-sky-600 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-2xl transform transition-transform hover:scale-110">
+            <i class="fa-solid fa-robot"></i>
+        </button>
+        
+        <div id="ai-chat-window" class="fixed bottom-28 right-6 w-80 sm:w-96 bg-white rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-slate-200 z-50 flex flex-col hidden overflow-hidden transition-all origin-bottom-right h-[500px] max-h-[70vh]">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-teal-500 to-sky-500 p-4 text-white flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/20 p-2 rounded-xl"><i class="fa-solid fa-robot text-xl"></i></div>
+                    <div>
+                        <h4 class="font-black leading-none">ChemBot AI</h4>
+                        <span class="text-xs font-bold text-teal-100">Asisten Guru</span>
+                    </div>
+                </div>
+                <button onclick="toggleAiChat()" class="text-white/80 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            <!-- Chat Area -->
+            <div id="ai-chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 text-sm">
+                <div class="flex gap-2">
+                    <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-robot"></i></div>
+                    <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-slate-700">
+                        Halo! Saya Asisten AI Anda. Ada yang bisa saya bantu terkait penyusunan Pre-Test, materi, atau analisis hasil adaptif siswa?
+                    </div>
+                </div>
+            </div>
+            <!-- Input Area -->
+            <div class="p-4 bg-white border-t border-slate-100">
+                <div class="flex gap-2 relative">
+                    <input type="text" id="ai-chat-input" class="w-full p-3 pr-12 border-2 border-slate-200 rounded-xl focus:border-teal-500 outline-none text-sm font-medium" placeholder="Tanya sesuatu..." onkeypress="if(event.key === 'Enter') sendAiMessage()">
+                    <button onclick="sendAiMessage()" class="absolute right-2 top-1.5 bottom-1.5 bg-teal-500 hover:bg-teal-600 text-white w-10 rounded-lg shadow-md transition-colors flex items-center justify-center">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -124,7 +170,7 @@
                 <button onclick="showView('landing')" class="text-slate-400 hover:text-slate-700 font-bold mb-6 flex items-center gap-2 transition-colors"><i class="fa-solid fa-arrow-left"></i> Kembali ke Awal</button>
                 
                 <h2 class="text-3xl font-black text-slate-800 mb-2"><i class="fa-solid fa-chalkboard-user text-sky-500 mr-2"></i> Portal Guru</h2>
-                <p class="text-slate-500 font-medium mb-8">Login untuk mengelola soal dan memulai lintasan Arena Kuis.</p>
+                <p class="text-slate-500 font-medium mb-8">Login untuk mengelola soal, materi adaptif, dan Arena Kuis.</p>
                 
                 <div class="space-y-4">
                     <input type="email" id="t-email" class="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors" placeholder="Email Terdaftar">
@@ -146,10 +192,10 @@
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                     <div>
                         <h2 class="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">Ruang Kendali</h2>
-                        <p class="text-slate-500 font-bold mt-1">Kelola sesi kelas dan kuis interaktif Anda.</p>
+                        <p class="text-slate-500 font-bold mt-1">Kelola sesi kelas, pre-test, materi, dan kuis Anda.</p>
                     </div>
                     <button onclick="createSession()" class="w-full sm:w-auto bg-teal-500 hover:bg-teal-600 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1">
-                        <i class="fa-solid fa-plus text-xl"></i> Buat Sesi Kuis Baru
+                        <i class="fa-solid fa-plus text-xl"></i> Buat Sesi Baru
                     </button>
                 </div>
 
@@ -163,7 +209,7 @@
         <!-- 4. SESSION MANAGER -->
         <!-- ========================================== -->
         <section id="session-manage" class="view-section py-8 px-4 flex-1 bg-slate-50">
-            <div class="max-w-5xl mx-auto w-full">
+            <div class="max-w-6xl mx-auto w-full">
                 <button onclick="showView('teacher-dash')" class="text-slate-500 hover:text-slate-800 font-black mb-6 flex items-center gap-2 transition-colors"><i class="fa-solid fa-arrow-left"></i> Kembali ke Dashboard</button>
                 
                 <div class="bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border border-slate-100 mb-8">
@@ -176,29 +222,58 @@
                             <h2 class="text-3xl font-black text-slate-800" id="sm-title">Judul Sesi</h2>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                            <button id="btn-toggle-live" onclick="toggleLive()" class="flex-1 lg:flex-none bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-black shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2"><i class="fa-solid fa-play"></i> Buka Gerbang (Live)</button>
+                            <button id="btn-toggle-live" onclick="toggleLive()" class="flex-1 lg:flex-none bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-black shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2"><i class="fa-solid fa-play"></i> Buka Gerbang Kuis</button>
                             <button onclick="openArenaTeacher()" class="flex-1 lg:flex-none bg-sky-500 hover:bg-sky-600 text-white px-6 py-3.5 rounded-xl font-black shadow-lg shadow-sky-500/20 transition-all flex justify-center items-center gap-2"><i class="fa-solid fa-flag-checkered"></i> Pantau Lintasan Arena</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tabs -->
-                <div class="flex gap-2 sm:gap-6 border-b-2 border-slate-200 mb-8">
-                    <button onclick="switchSessionTab('soal')" id="tab-soal" class="pb-3 px-2 sm:px-6 font-black text-lg text-teal-600 border-b-4 border-teal-500 transition-colors">Daftar Soal</button>
-                    <button onclick="switchSessionTab('siswa')" id="tab-siswa" class="pb-3 px-2 sm:px-6 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors">Analisis Siswa</button>
+                <!-- Tabs (Alur Pembelajaran Adaptif) -->
+                <div class="flex overflow-x-auto gap-2 sm:gap-6 border-b-2 border-slate-200 mb-8 pb-2 hide-scrollbar">
+                    <button onclick="switchSessionTab('pretest')" id="tab-pretest" class="pb-3 px-4 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors whitespace-nowrap"><i class="fa-solid fa-clipboard-list mr-1"></i> Pre-Test</button>
+                    <button onclick="switchSessionTab('materi')" id="tab-materi" class="pb-3 px-4 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors whitespace-nowrap"><i class="fa-solid fa-book-open mr-1"></i> Materi (Level Awal)</button>
+                    <button onclick="switchSessionTab('soal')" id="tab-soal" class="pb-3 px-4 font-black text-lg text-teal-600 border-b-4 border-teal-500 transition-colors whitespace-nowrap"><i class="fa-solid fa-gamepad mr-1"></i> Misi Game</button>
+                    <button onclick="switchSessionTab('siswa')" id="tab-siswa" class="pb-3 px-4 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors whitespace-nowrap"><i class="fa-solid fa-chart-pie mr-1"></i> Analisis Siswa</button>
                 </div>
 
-                <!-- Soal Tab -->
+                <!-- Pre-Test Tab -->
+                <div id="sm-pretest-view" class="hidden">
+                    <div class="bg-white p-8 rounded-[2rem] shadow-sm border-2 border-slate-100 text-center">
+                        <div class="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4"><i class="fa-solid fa-clipboard-question"></i></div>
+                        <h3 class="font-black text-2xl text-slate-800 mb-2">Soal Diagnosis (Pre-Test)</h3>
+                        <p class="text-slate-500 font-bold mb-6 max-w-md mx-auto">Susun soal pre-test untuk menentukan level kemampuan awal siswa. AI Asisten siap membantu Anda merumuskan soal yang tepat.</p>
+                        <button onclick="showModal('Segera Hadir', 'Fitur manajemen soal Pre-Test sedang dalam pengembangan.')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-black shadow-lg transition-colors"><i class="fa-solid fa-plus mr-2"></i> Tambah Soal Pre-Test</button>
+                    </div>
+                </div>
+
+                <!-- Materi Tab -->
+                <div id="sm-materi-view" class="hidden">
+                    <div class="bg-white p-8 rounded-[2rem] shadow-sm border-2 border-slate-100 mb-6">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-14 h-14 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center text-2xl"><i class="fa-solid fa-book"></i></div>
+                            <div>
+                                <h3 class="font-black text-2xl text-slate-800">Modul & Materi Penguatan</h3>
+                                <p class="text-slate-500 font-bold text-sm">Berikan catatan materi awal bagi siswa yang membutuhkan penguatan.</p>
+                            </div>
+                        </div>
+                        <textarea id="materi-text" class="w-full p-5 border-2 border-slate-200 bg-slate-50 rounded-xl focus:bg-white focus:border-amber-500 outline-none resize-y min-h-[200px] font-medium" placeholder="Ketik ringkasan materi, rumus, atau tautan video di sini... Anda bisa meminta AI Asisten untuk membuat rangkuman."></textarea>
+                        <div class="mt-4 flex justify-end">
+                            <button onclick="showModal('Berhasil', 'Materi berhasil disimpan untuk sesi ini.', 'alert')" class="bg-amber-500 hover:bg-amber-600 text-white px-8 py-3 rounded-xl font-black shadow-lg transition-transform hover:-translate-y-1"><i class="fa-solid fa-save mr-2"></i> Simpan Materi</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Soal Tab (Misi Game) -->
                 <div id="sm-soal-view">
-                    <button onclick="showQuestionForm()" class="bg-teal-50 text-teal-600 hover:bg-teal-100 px-6 py-3 rounded-xl font-black mb-8 border border-teal-200 transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> Tambah Pertanyaan</button>
+                    <button onclick="showQuestionForm()" class="bg-teal-50 text-teal-600 hover:bg-teal-100 px-6 py-3 rounded-xl font-black mb-8 border border-teal-200 transition-colors flex items-center gap-2"><i class="fa-solid fa-plus"></i> Tambah Pertanyaan Misi</button>
                     
                     <!-- Form Soal -->
                     <div id="q-form-container" class="bg-white p-6 sm:p-8 rounded-[2rem] shadow-xl border-2 border-teal-100 mb-8 hidden transform transition-all">
-                        <h3 class="font-black text-2xl mb-6 text-slate-800"><i class="fa-solid fa-pen-to-square text-teal-500 mr-2"></i> Buat Soal Baru</h3>
+                        <h3 class="font-black text-2xl mb-6 text-slate-800"><i class="fa-solid fa-pen-to-square text-teal-500 mr-2"></i> Buat Misi Baru</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="space-y-4">
                                 <div>
-                                    <label class="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Kategori Soal</label>
+                                    <label class="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Kategori Pembelajaran Mendalam</label>
                                     <select id="q-kategori" class="w-full p-3.5 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-bold">
                                         <option value="Pahami Konsep">Pahami Konsep</option>
                                         <option value="Selesaikan Masalah">Selesaikan Masalah</option>
@@ -235,15 +310,26 @@
                         </div>
                         <div class="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-100">
                             <button onclick="hideQuestionForm()" class="px-6 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-black transition-colors">Batal</button>
-                            <button onclick="saveQuestion()" class="px-8 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-black shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1">Simpan Soal</button>
+                            <button onclick="saveQuestion()" class="px-8 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-black shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1">Simpan Misi</button>
                         </div>
                     </div>
 
                     <div id="sm-q-list" class="space-y-4"></div>
                 </div>
 
-                <!-- Siswa Tab -->
+                <!-- Siswa Tab (Umpan Balik) -->
                 <div id="sm-siswa-view" class="hidden">
+                    <div class="bg-sky-50 p-6 rounded-[2rem] border-2 border-sky-100 mb-8 flex flex-col md:flex-row gap-6 items-center">
+                        <div class="flex-1">
+                            <h3 class="text-xl font-black text-slate-800 mb-2">Panduan Adaptif Umpan Balik</h3>
+                            <ul class="text-sm font-bold text-slate-600 space-y-1">
+                                <li><span class="text-emerald-600"><i class="fa-solid fa-arrow-trend-up"></i> Skor 80 - 100:</span> Arahkan ke Level Lanjut & Tantangan Analisis.</li>
+                                <li><span class="text-amber-500"><i class="fa-solid fa-arrows-spin"></i> Skor 50 - 79:</span> Berikan Latihan Penguatan & Ulang Materi.</li>
+                                <li><span class="text-rose-500"><i class="fa-solid fa-arrow-trend-down"></i> Skor < 50:</span> Wajib Remedial Dasar & Ulang Konsep Awal.</li>
+                            </ul>
+                        </div>
+                        <button onclick="toggleAiChat()" class="bg-white border-2 border-slate-200 hover:border-sky-400 text-sky-600 px-6 py-3 rounded-xl font-black shadow-sm transition-all"><i class="fa-solid fa-robot mr-2"></i> Minta AI Analisis Kelas</button>
+                    </div>
                     <div id="sm-s-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
                 </div>
             </div>
@@ -485,12 +571,14 @@
             });
             document.getElementById(viewId).classList.add('active');
             
-            // Atur Navbar
+            // Atur Navbar & AI Chat Widget
             if(['landing', 'arena', 'teacher-auth', 'quiz'].includes(viewId)) {
                 document.getElementById('navbar').classList.add('hidden');
+                document.getElementById('ai-widget-container').classList.add('hidden');
             } else {
                 document.getElementById('navbar').classList.remove('hidden');
                 document.getElementById('nav-user').innerText = currentUser?.email?.split('@')[0] || 'Guru';
+                if(currentUser) document.getElementById('ai-widget-container').classList.remove('hidden');
             }
 
             // Inisialisasi spesifik berdasarkan rute
@@ -508,6 +596,103 @@
                     btn.classList.remove('border-transparent');
                 }
             });
+        }
+
+        // ==========================================
+        // AI CHAT ASISTEN (GEMINI INTEGRATION)
+        // ==========================================
+        let isAiChatOpen = false;
+        function toggleAiChat() {
+            isAiChatOpen = !isAiChatOpen;
+            const windowEl = document.getElementById('ai-chat-window');
+            if(isAiChatOpen) {
+                windowEl.classList.remove('hidden');
+                setTimeout(() => windowEl.classList.replace('scale-0', 'scale-100'), 10);
+                document.getElementById('ai-chat-input').focus();
+            } else {
+                windowEl.classList.add('hidden');
+            }
+        }
+
+        async function fetchGeminiAPI(promptText) {
+            // LAYER KEAMANAN 1: Pastikan hanya berjalan jika currentUser (guru) ada.
+            if (!currentUser) {
+                return "Akses ditolak. Fitur AI ini hanya dapat diakses oleh guru yang sudah terotentikasi.";
+            }
+
+            try {
+                // Ambil token otentikasi sesi Supabase milik Guru
+                const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+                if (sessionError || !session) {
+                    throw new Error("Sesi login Anda tidak valid atau telah kedaluwarsa. Silakan login ulang.");
+                }
+
+                // Memanggil Supabase Edge Function secara aman
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/gemini-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}` // Mengirim token sebagai tiket akses!
+                    },
+                    body: JSON.stringify({ promptText: promptText })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || 'Terjadi kesalahan pada server backend AI.');
+                }
+
+                const result = await response.json();
+                return result.reply;
+
+            } catch (error) {
+                console.error(error);
+                return `Koneksi ke asisten AI gagal. ${error.message}`;
+            }
+        }
+
+        async function sendAiMessage() {
+            const inputEl = document.getElementById('ai-chat-input');
+            const text = inputEl.value.trim();
+            if(!text) return;
+
+            const historyEl = document.getElementById('ai-chat-history');
+            
+            // Tambah bubble guru
+            historyEl.innerHTML += `
+                <div class="flex gap-2 justify-end">
+                    <div class="bg-teal-500 text-white p-3 rounded-2xl rounded-tr-none shadow-sm text-right">${text}</div>
+                </div>`;
+            inputEl.value = '';
+            
+            // Tambah indikator loading ChemBot
+            const loadingId = 'ai-loading-' + Date.now();
+            historyEl.innerHTML += `
+                <div id="${loadingId}" class="flex gap-2">
+                    <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-robot"></i></div>
+                    <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 flex items-center gap-1">
+                        <div class="w-2 h-2 bg-teal-400 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-teal-400 rounded-full typing-dot"></div>
+                        <div class="w-2 h-2 bg-teal-400 rounded-full typing-dot"></div>
+                    </div>
+                </div>`;
+            historyEl.scrollTop = historyEl.scrollHeight;
+
+            // Call API
+            const aiResponse = await fetchGeminiAPI(text);
+            
+            // Hapus Loading dan Tampilkan Jawaban
+            document.getElementById(loadingId).remove();
+            
+            // Format simple markdown (bold)
+            const formattedResp = aiResponse.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+            
+            historyEl.innerHTML += `
+                <div class="flex gap-2">
+                    <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-robot"></i></div>
+                    <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-slate-700">${formattedResp}</div>
+                </div>`;
+            historyEl.scrollTop = historyEl.scrollHeight;
         }
 
         // ==========================================
@@ -621,7 +806,7 @@
                 statusBadge.className = "px-4 py-1.5 rounded-lg font-black text-xs uppercase tracking-wider bg-slate-100 text-slate-500";
                 statusBadge.innerText = "DRAFT";
                 btnLive.className = "flex-1 lg:flex-none bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-black shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2";
-                btnLive.innerHTML = '<i class="fa-solid fa-play"></i> Buka Gerbang (Live)';
+                btnLive.innerHTML = '<i class="fa-solid fa-play"></i> Buka Gerbang Kuis';
             }
 
             showView('session-manage');
@@ -638,19 +823,23 @@
         }
 
         function switchSessionTab(tab) {
-            document.getElementById('tab-soal').className = "pb-3 px-2 sm:px-6 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors";
-            document.getElementById('tab-siswa').className = "pb-3 px-2 sm:px-6 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors";
-            document.getElementById(`tab-${tab}`).className = "pb-3 px-2 sm:px-6 font-black text-lg text-teal-600 border-b-4 border-teal-500 transition-colors";
+            const tabs = ['pretest', 'materi', 'soal', 'siswa'];
             
-            if(tab === 'soal') {
-                document.getElementById('sm-soal-view').classList.remove('hidden');
-                document.getElementById('sm-siswa-view').classList.add('hidden');
-                loadSessionQuestions();
-            } else {
-                document.getElementById('sm-soal-view').classList.add('hidden');
-                document.getElementById('sm-siswa-view').classList.remove('hidden');
-                loadSessionStudents();
-            }
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                const view = document.getElementById(`sm-${t}-view`);
+                
+                btn.className = "pb-3 px-4 font-black text-lg text-slate-400 hover:text-slate-600 border-b-4 border-transparent transition-colors whitespace-nowrap";
+                view.classList.add('hidden');
+                
+                if (t === tab) {
+                    btn.className = "pb-3 px-4 font-black text-lg text-teal-600 border-b-4 border-teal-500 transition-colors whitespace-nowrap";
+                    view.classList.remove('hidden');
+                }
+            });
+
+            if(tab === 'soal') loadSessionQuestions();
+            if(tab === 'siswa') loadSessionStudents();
         }
 
         // --- Question Management ---
@@ -661,7 +850,7 @@
             if(error) return list.innerHTML = `<div class="text-rose-500 font-bold bg-rose-50 p-4 rounded-xl">Error: ${error.message}</div>`;
 
             list.innerHTML = '';
-            if(data.length === 0) return list.innerHTML = `<div class="p-10 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed border-slate-200">Belum ada pertanyaan. Tambahkan soal pertama!</div>`;
+            if(data.length === 0) return list.innerHTML = `<div class="p-10 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed border-slate-200">Belum ada misi permainan. Tambahkan soal pertama!</div>`;
 
             data.forEach((q, i) => {
                 let opts = q.options;
@@ -764,6 +953,15 @@
             if(players.length === 0) return list.innerHTML = `<div class="col-span-full p-10 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed border-slate-200">Lintasan masih kosong. Menunggu siswa...</div>`;
 
             players.forEach((p, index) => {
+                let badgeUI = "";
+                let maxScoreForPct = arenaMaxScore || 10;
+                let pct = (p.score / maxScoreForPct) * 100;
+                
+                // Adaptif logic visualizer
+                if(pct >= 80) badgeUI = `<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-wider"><i class="fa-solid fa-arrow-trend-up"></i> Level Lanjut</span>`;
+                else if(pct >= 50) badgeUI = `<span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-wider"><i class="fa-solid fa-arrows-spin"></i> Ulang Materi</span>`;
+                else badgeUI = `<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-wider"><i class="fa-solid fa-arrow-trend-down"></i> Remedial</span>`;
+
                 const div = document.createElement('div');
                 div.className = "bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 relative overflow-hidden";
                 div.innerHTML = `
@@ -772,19 +970,19 @@
                         <span class="text-5xl drop-shadow-md">${p.avatar}</span>
                         <div>
                             <h3 class="font-black text-xl text-slate-800 leading-tight">${p.name}</h3>
-                            <div class="mt-1 flex gap-2 text-sm font-bold">
+                            <div class="mt-1 flex gap-2 text-sm font-bold items-center flex-wrap">
                                 <span class="text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">${p.score} pt</span>
-                                <span class="text-sky-500 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">${Math.round(p.progress)}%</span>
+                                ${badgeUI}
                             </div>
                         </div>
                     </div>
                     <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4 min-h-[80px]">
                         <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1"><i class="fa-solid fa-comment-dots"></i> Refleksi Siswa</p>
                         <p class="text-sm text-slate-600 font-medium italic">
-                            ${p.refleksi ? `"${p.refleksi}"` : "Sedang berlari di lintasan..."}
+                            ${p.refleksi ? `"${p.refleksi}"` : "Belum memberikan refleksi."}
                         </p>
                     </div>
-                    <button onclick="kickPlayer('${p.id}')" class="w-full text-sm text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white py-2 rounded-xl font-bold transition-colors">Diskualifikasi</button>
+                    <button onclick="kickPlayer('${p.id}')" class="w-full text-sm text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white py-2 rounded-xl font-bold transition-colors">Hapus Riwayat</button>
                 `;
                 list.appendChild(div);
             });
@@ -1087,7 +1285,7 @@
             });
 
             if(players.length === 0) {
-                return;
+                return; // Lintasan bersih saat belum ada pemain.
             }
 
             players.forEach((p, idx) => {
