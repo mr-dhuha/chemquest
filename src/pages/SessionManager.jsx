@@ -4,8 +4,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import { sampleQuestions } from '../data/sampleQuestions';
 import { Dialog } from '../components/DialogManager';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 export default function SessionManager({ session }) {
   const { id } = useParams();
