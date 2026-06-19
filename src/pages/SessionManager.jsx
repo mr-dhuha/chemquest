@@ -22,6 +22,16 @@ export default function SessionManager({ session }) {
   const [qImage, setQImage] = useState(null);
   const [qCaption, setQCaption] = useState('');
 
+  // Config Modal State
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [sessionConfig, setSessionConfig] = useState({
+    timerMinutes: 15,
+    flow: 'sequential', // 'sequential' or 'free'
+    enablePretest: true,
+    enableMateri: true,
+    enableMisi: true
+  });
+
   useEffect(() => {
     loadSession();
   }, [id]);
@@ -48,10 +58,32 @@ export default function SessionManager({ session }) {
     if (data) setPlayers(data);
   };
 
-  const toggleLive = async () => {
+  const openLiveConfig = () => {
+    if (activeSession.status === 'live') {
+      toggleLive();
+    } else {
+      setShowConfigModal(true);
+    }
+  };
+
+  const toggleLive = async (finalConfig = null) => {
     const newStatus = activeSession.status === 'live' ? 'finished' : 'live';
-    const { error } = await supabase.from('sessions').update({ status: newStatus }).eq('id', id);
-    if (!error) setActiveSession({ ...activeSession, status: newStatus });
+    const updates = { status: newStatus };
+    
+    if (newStatus === 'live' && finalConfig) {
+      updates.config = {
+        ...finalConfig,
+        ends_at: Date.now() + (finalConfig.timerMinutes * 60000)
+      };
+    }
+
+    const { error } = await supabase.from('sessions').update(updates).eq('id', id);
+    if (!error) {
+      setActiveSession({ ...activeSession, status: newStatus, config: updates.config || activeSession.config });
+      setShowConfigModal(false);
+    } else {
+      alert("Gagal update status: " + error.message);
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -143,7 +175,7 @@ export default function SessionManager({ session }) {
             
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
               <button 
-                onClick={toggleLive} 
+                onClick={openLiveConfig} 
                 className={`flex-1 lg:flex-none px-6 py-3.5 rounded-xl font-black shadow-lg transition-all flex justify-center items-center gap-2 ${isLive ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20'}`}
               >
                 {isLive ? <><i className="fa-solid fa-lock"></i> Tutup Gerbang</> : <><i className="fa-solid fa-play"></i> Buka Gerbang Kuis</>}
@@ -377,8 +409,88 @@ export default function SessionManager({ session }) {
             </div>
           </div>
         )}
-
       </div>
+
+      {/* Config Modal */}
+      {showConfigModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden border border-slate-200">
+            <div className="bg-slate-50 p-6 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-2xl font-black text-slate-800">
+                <i className="fa-solid fa-gears text-teal-500 mr-2"></i> Pengaturan Sesi
+              </h3>
+              <button onClick={() => setShowConfigModal(false)} className="text-slate-400 hover:text-rose-500 w-10 h-10 rounded-xl hover:bg-rose-50 flex items-center justify-center transition-colors">
+                <i className="fa-solid fa-times text-xl"></i>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-black text-slate-700 mb-2 uppercase tracking-wider">Durasi Kuis (Menit)</label>
+                <div className="flex items-center gap-4">
+                  <input 
+                    type="number" 
+                    value={sessionConfig.timerMinutes} 
+                    onChange={e => setSessionConfig({...sessionConfig, timerMinutes: parseInt(e.target.value) || 1})}
+                    className="w-24 bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-black text-xl text-center focus:border-teal-400 focus:outline-none"
+                    min="1"
+                  />
+                  <span className="text-slate-500 font-bold">Menit sebelum balapan otomatis berakhir</span>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-black text-slate-700 mb-2 uppercase tracking-wider">Alur Belajar Siswa</label>
+                <div className="flex bg-slate-100 p-1.5 rounded-xl">
+                  <button 
+                    onClick={() => setSessionConfig({...sessionConfig, flow: 'sequential'})}
+                    className={`flex-1 py-2.5 rounded-lg font-black text-sm transition-all ${sessionConfig.flow === 'sequential' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    Berurutan (Wajib)
+                  </button>
+                  <button 
+                    onClick={() => setSessionConfig({...sessionConfig, flow: 'free'})}
+                    className={`flex-1 py-2.5 rounded-lg font-black text-sm transition-all ${sessionConfig.flow === 'free' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    Bebas Akses
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 mt-2 font-bold px-1">
+                  {sessionConfig.flow === 'sequential' ? 'Siswa harus melewati Pre-test dan Materi sebelum bisa main Kuis.' : 'Siswa bisa melompat langsung ke Kuis tanpa membaca materi.'}
+                </p>
+              </div>
+              
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-4">
+                <label className="block text-sm font-black text-slate-700 mb-2 uppercase tracking-wider">Modul Aktif</label>
+                
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="font-bold text-slate-600 group-hover:text-slate-800"><i className="fa-solid fa-clipboard-list w-6 text-center text-sky-400"></i> Pre-Test</span>
+                  <input type="checkbox" className="w-5 h-5 accent-teal-500" checked={sessionConfig.enablePretest} onChange={e => setSessionConfig({...sessionConfig, enablePretest: e.target.checked})} />
+                </label>
+                
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="font-bold text-slate-600 group-hover:text-slate-800"><i className="fa-solid fa-book-open w-6 text-center text-amber-400"></i> Materi</span>
+                  <input type="checkbox" className="w-5 h-5 accent-teal-500" checked={sessionConfig.enableMateri} onChange={e => setSessionConfig({...sessionConfig, enableMateri: e.target.checked})} />
+                </label>
+                
+                <label className="flex items-center justify-between cursor-pointer group opacity-50">
+                  <span className="font-bold text-slate-600"><i className="fa-solid fa-gamepad w-6 text-center text-rose-400"></i> Misi Kuis (Balapan)</span>
+                  <input type="checkbox" className="w-5 h-5 accent-teal-500" checked={true} readOnly />
+                </label>
+              </div>
+            </div>
+            
+            <div className="p-6 bg-slate-50 border-t border-slate-100">
+              <button 
+                onClick={() => toggleLive(sessionConfig)}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-black shadow-lg shadow-emerald-500/20 transition-transform transform hover:-translate-y-1 flex items-center justify-center gap-2"
+              >
+                <i className="fa-solid fa-rocket"></i> Mulai & Buka Gerbang Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
