@@ -8,6 +8,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import SessionManager from './pages/SessionManager';
 import Quiz from './pages/Quiz';
 import Arena from './pages/Arena';
+import QrViewer from './pages/QrViewer';
 import AiWidget from './components/AiWidget';
 import Modal from './components/Modal';
 
@@ -38,6 +39,7 @@ function App() {
         <Route path="/session/:id" element={session ? <SessionManager session={session} /> : <Navigate to="/teacher" />} />
         <Route path="/quiz/:pin" element={<Quiz />} />
         <Route path="/arena/:pin" element={<Arena session={session} />} />
+        <Route path="/qrcode/:pin" element={<QrViewer />} />
       </Routes>
       <Modal />
       {session && <AiWidget />}

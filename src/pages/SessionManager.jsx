@@ -133,7 +133,7 @@ export default function SessionManager({ session }) {
                 </span>
                 <span className="bg-slate-100 text-slate-600 px-4 py-1.5 rounded-lg font-mono font-black tracking-widest border border-slate-200 flex items-center gap-2">
                   PIN: {activeSession.pin}
-                  <button onClick={() => setShowQr(!showQr)} className="text-slate-400 hover:text-teal-500 transition-colors ml-2" title="Tampilkan QR Code">
+                  <button onClick={() => window.open('/qrcode/' + activeSession.pin, '_blank')} className="text-slate-400 hover:text-teal-500 transition-colors ml-2" title="Tampilkan QR Code di Tab Baru">
                     <i className="fa-solid fa-qrcode text-lg"></i>
                   </button>
                 </span>
@@ -141,17 +141,6 @@ export default function SessionManager({ session }) {
               <h2 className="text-3xl font-black text-slate-800">{activeSession.title}</h2>
             </div>
             
-            {showQr && (
-              <div className="absolute top-full left-0 sm:left-auto sm:right-0 mt-4 bg-white p-6 rounded-3xl shadow-2xl border-4 border-teal-500 z-50 text-center animate-slideUpFade">
-                <p className="text-sm font-black text-teal-600 mb-4 uppercase tracking-widest">SCAN UNTUK JOIN</p>
-                <div className="bg-white p-4 rounded-2xl inline-block shadow-inner border-2 border-slate-100 mb-4">
-                  <QRCodeCanvas value={joinUrl} size={200} level="H" />
-                </div>
-                <div className="bg-slate-100 p-3 rounded-xl font-mono text-slate-700 font-bold text-lg tracking-widest">
-                  PIN: {activeSession.pin}
-                </div>
-              </div>
-            )}
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
               <button 
                 onClick={toggleLive} 

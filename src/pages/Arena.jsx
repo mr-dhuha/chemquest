@@ -84,24 +84,12 @@ export default function Arena({ session: teacherSession }) {
         </div>
         <div className="flex items-center gap-4 w-full sm:w-auto">
           <div 
-            onClick={() => setShowQr(!showQr)} 
+            onClick={() => window.open('/qrcode/' + sessionData.pin, '_blank')} 
             className="bg-amber-100 hover:bg-amber-200 text-amber-800 px-6 py-2 rounded-2xl text-center border-2 border-amber-200 flex-1 sm:flex-none cursor-pointer transition-colors relative"
-            title="Tampilkan QR Code"
+            title="Tampilkan QR Code di Tab Baru"
           >
             <p className="text-[10px] uppercase font-black tracking-widest text-amber-600/80 mb-0.5"><i className="fa-solid fa-qrcode mr-1"></i> PIN JOIN</p>
             <p className="text-3xl font-black tracking-[0.2em] font-mono leading-none">{sessionData.pin}</p>
-            
-            {showQr && (
-              <div className="absolute top-full right-0 mt-4 bg-white p-6 rounded-3xl shadow-2xl border-4 border-amber-400 z-50 text-center animate-slideUpFade">
-                <p className="text-sm font-black text-amber-600 mb-4 uppercase tracking-widest">SCAN UNTUK JOIN</p>
-                <div className="bg-white p-4 rounded-2xl inline-block shadow-inner border-2 border-slate-100 mb-4">
-                  <QRCodeCanvas value={joinUrl} size={250} level="H" />
-                </div>
-                <div className="bg-slate-100 p-3 rounded-xl font-mono text-slate-700 font-bold text-xl tracking-widest">
-                  PIN: {sessionData.pin}
-                </div>
-              </div>
-            )}
           </div>
           <button onClick={closeArena} className="bg-slate-800 hover:bg-slate-900 text-white w-12 h-12 rounded-2xl shadow-lg transition-transform transform hover:-translate-y-1 flex items-center justify-center text-xl shrink-0">
             <i className="fa-solid fa-times"></i>
