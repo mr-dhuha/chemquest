@@ -163,7 +163,7 @@ export default function SessionManager({ session }) {
           {['pretest', 'materi', 'soal', 'siswa'].map(tab => (
             <button 
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => { setActiveTab(tab); setShowQForm(false); }}
               className={`pb-3 px-4 font-black text-lg whitespace-nowrap border-b-4 transition-colors ${activeTab === tab ? 'text-teal-600 border-teal-500' : 'text-slate-400 hover:text-slate-600 border-transparent'}`}
             >
               {tab === 'pretest' && <><i className="fa-solid fa-clipboard-list mr-1"></i> Pre-Test</>}
@@ -174,75 +174,119 @@ export default function SessionManager({ session }) {
           ))}
         </div>
 
-        {/* Tab Content Placeholder for Pretest/Materi */}
-        {(activeTab === 'pretest' || activeTab === 'materi') && (
-          <div className="bg-white p-8 rounded-[2rem] shadow-sm border-2 border-slate-100 text-center text-slate-500 font-bold">
-            Fitur ini sedang dalam pengembangan.
-          </div>
-        )}
-
-        {/* Soal Tab */}
-        {activeTab === 'soal' && (
+        {/* Dynamic Content Tabs (Pretest, Materi, Soal) */}
+        {['pretest', 'materi', 'soal'].includes(activeTab) && (
           <div>
             <div className="flex flex-wrap gap-4 mb-8">
               <button onClick={() => setShowQForm(!showQForm)} className="bg-teal-50 text-teal-600 hover:bg-teal-100 px-6 py-3 rounded-xl font-black border border-teal-200 transition-colors flex items-center gap-2">
-                <i className="fa-solid fa-plus"></i> Tambah Pertanyaan Misi
+                <i className={`fa-solid ${showQForm ? 'fa-times' : 'fa-plus'}`}></i> 
+                {activeTab === 'pretest' ? 'Tambah Soal Pre-Test' : activeTab === 'materi' ? 'Tambah Materi' : 'Tambah Misi Game'}
               </button>
-              <button onClick={loadSampleQuestions} className="bg-amber-50 text-amber-600 hover:bg-amber-100 px-6 py-3 rounded-xl font-black border border-amber-200 transition-colors flex items-center gap-2">
-                <i className="fa-solid fa-magic"></i> Muat Soal Contoh
-              </button>
+              {activeTab === 'soal' && (
+                <button onClick={loadSampleQuestions} className="bg-amber-50 text-amber-600 hover:bg-amber-100 px-6 py-3 rounded-xl font-black border border-amber-200 transition-colors flex items-center gap-2">
+                  <i className="fa-solid fa-magic"></i> Muat Soal Contoh
+                </button>
+              )}
             </div>
             
             {showQForm && (
               <div className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-xl border-2 border-teal-100 mb-8 transform transition-all">
-                <h3 className="font-black text-2xl mb-6 text-slate-800"><i className="fa-solid fa-pen-to-square text-teal-500 mr-2"></i> Buat Misi Baru</h3>
+                <h3 className="font-black text-2xl mb-6 text-slate-800">
+                  <i className="fa-solid fa-pen-to-square text-teal-500 mr-2"></i> 
+                  {activeTab === 'pretest' ? 'Buat Soal Pre-Test Baru' : activeTab === 'materi' ? 'Buat Materi Baru' : 'Buat Misi Baru'}
+                </h3>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
+                    {/* Category Dropdown (Only for Misi Game) */}
+                    {activeTab === 'soal' && (
+                      <div>
+                        <label className="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Kategori Misi</label>
+                        <select value={qCategory} onChange={e => setQCategory(e.target.value)} className="w-full p-3.5 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-bold">
+                          <option value="Pahami Konsep">Pahami Konsep</option>
+                          <option value="Selesaikan Masalah">Selesaikan Masalah</option>
+                          <option value="Kaitkan Kehidupan">Kaitkan Kehidupan</option>
+                        </select>
+                      </div>
+                    )}
+                    
                     <div>
-                      <label className="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Kategori</label>
-                      <select value={qCategory} onChange={e => setQCategory(e.target.value)} className="w-full p-3.5 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-bold">
-                        <option value="Pahami Konsep">Pahami Konsep</option>
-                        <option value="Selesaikan Masalah">Selesaikan Masalah</option>
-                        <option value="Kaitkan Kehidupan">Kaitkan Kehidupan</option>
-                      </select>
+                      <label className="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">
+                        {activeTab === 'materi' ? 'Judul Materi' : 'Pertanyaan'}
+                      </label>
+                      <textarea value={qText} onChange={e => setQText(e.target.value)} className={`w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-medium resize-none ${activeTab === 'materi' ? 'h-16' : 'h-32'}`} placeholder={activeTab === 'materi' ? "Contoh: Struktur Atom" : "Ketik pertanyaan di sini..."}></textarea>
                     </div>
-                    <div>
-                      <label className="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Pertanyaan</label>
-                      <textarea value={qText} onChange={e => setQText(e.target.value)} className="w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-medium resize-none" rows="4"></textarea>
-                    </div>
-                    <div>
-                      <label className="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Opsi Jawaban (Pisahkan dengan koma)</label>
-                      <input type="text" value={qOptions} onChange={e => setQOptions(e.target.value)} className="w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-medium" placeholder="Contoh: Merah, Kuning, Hijau, Biru" />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-sm text-emerald-500 mb-1.5 uppercase tracking-wide">Jawaban Benar</label>
-                      <input type="text" value={qAnswer} onChange={e => setQAnswer(e.target.value)} className="w-full p-4 border-2 border-emerald-300 bg-emerald-50 rounded-xl focus:border-emerald-500 outline-none font-black text-emerald-700" placeholder="Ketik persis seperti salah satu opsi" />
-                    </div>
+
+                    {/* Options and Answer (Only for Pretest and Soal) */}
+                    {activeTab !== 'materi' ? (
+                      <>
+                        <div>
+                          <label className="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Opsi Jawaban (Pisahkan dengan koma)</label>
+                          <input type="text" value={qOptions} onChange={e => setQOptions(e.target.value)} className="w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-medium" placeholder="Contoh: Merah, Kuning, Hijau, Biru" />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-sm text-emerald-500 mb-1.5 uppercase tracking-wide">Jawaban Benar</label>
+                          <input type="text" value={qAnswer} onChange={e => setQAnswer(e.target.value)} className="w-full p-4 border-2 border-emerald-300 bg-emerald-50 rounded-xl focus:border-emerald-500 outline-none font-black text-emerald-700" placeholder="Ketik persis seperti salah satu opsi" />
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <label className="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Isi Materi</label>
+                        <textarea value={qCaption} onChange={e => setQCaption(e.target.value)} className="w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-medium h-48" placeholder="Ketik isi penjelasan materi di sini..."></textarea>
+                      </div>
+                    )}
                   </div>
+
                   <div className="space-y-4">
                     <div className="bg-slate-50 p-6 rounded-xl border-2 border-dashed border-slate-300 h-full flex flex-col justify-center">
                       <label className="block font-bold text-sm text-slate-500 mb-3 text-center uppercase tracking-wide"><i className="fa-solid fa-image text-xl mb-2 block"></i> Gambar Pendukung (Opsional)</label>
                       <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-black file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer mb-4" />
                       {qImage && <img src={qImage} className="max-h-40 mx-auto rounded-xl shadow-sm border-2 border-white mb-4" />}
-                      <div>
-                        <label className="block font-bold text-xs text-slate-400 mb-1 uppercase">Keterangan Gambar</label>
-                        <input type="text" value={qCaption} onChange={e => setQCaption(e.target.value)} className="w-full p-3 border-2 border-slate-200 bg-white rounded-lg focus:border-teal-500 outline-none text-sm" placeholder="Caption..." />
-                      </div>
+                      
+                      {activeTab !== 'materi' && (
+                        <div>
+                          <label className="block font-bold text-xs text-slate-400 mb-1 uppercase">Keterangan Gambar</label>
+                          <input type="text" value={qCaption} onChange={e => setQCaption(e.target.value)} className="w-full p-3 border-2 border-slate-200 bg-white rounded-lg focus:border-teal-500 outline-none text-sm" placeholder="Caption..." />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-100">
                   <button onClick={() => setShowQForm(false)} className="px-6 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-black transition-colors">Batal</button>
-                  <button onClick={saveQuestion} className="px-8 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-black shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1">Simpan Misi</button>
+                  <button onClick={() => {
+                    // Inject correct category based on activeTab
+                    if (activeTab === 'pretest') setQCategory('PRETEST');
+                    else if (activeTab === 'materi') {
+                      setQCategory('MATERI');
+                      setQOptions('Materi'); // Dummy options for DB constraint if any
+                      setQAnswer('Materi');  // Dummy answer
+                    }
+                    setTimeout(saveQuestion, 50); // Small delay to allow state to update before saving
+                  }} className="px-8 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-black shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1">
+                    Simpan
+                  </button>
                 </div>
               </div>
             )}
 
             <div className="space-y-4">
-              {questions.length === 0 ? (
-                <div className="p-10 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed border-slate-200">Belum ada misi permainan. Tambahkan soal pertama!</div>
-              ) : (
-                questions.map((q, i) => {
+              {(() => {
+                const filteredQuestions = questions.filter(q => {
+                  if (activeTab === 'pretest') return q.category === 'PRETEST';
+                  if (activeTab === 'materi') return q.category === 'MATERI';
+                  return q.category !== 'PRETEST' && q.category !== 'MATERI';
+                });
+
+                if (filteredQuestions.length === 0) {
+                  return (
+                    <div className="p-10 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
+                      Belum ada data untuk bagian ini. Tambahkan sekarang!
+                    </div>
+                  );
+                }
+
+                return filteredQuestions.map((q, i) => {
                   let opts = q.options;
                   try { if(typeof opts === 'string') opts = JSON.parse(opts); } catch(e){}
                   if(Array.isArray(opts)) opts = opts.join(', ');
@@ -250,22 +294,42 @@ export default function SessionManager({ session }) {
                   return (
                     <div key={q.id} className="bg-white p-5 sm:p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row gap-5 hover:border-teal-200 transition-colors">
                       <div className="bg-teal-100 text-teal-700 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 shadow-inner">{i+1}</div>
+                      
                       <div className="flex-1">
-                        <span className="text-[10px] font-black tracking-wider text-sky-600 bg-sky-50 px-3 py-1 rounded-lg uppercase border border-sky-100">{q.category || '-'}</span>
+                        {activeTab !== 'materi' && (
+                          <span className="text-[10px] font-black tracking-wider text-sky-600 bg-sky-50 px-3 py-1 rounded-lg uppercase border border-sky-100">
+                            {q.category || '-'}
+                          </span>
+                        )}
+                        
                         <p className="font-black text-xl mt-3 text-slate-800 leading-snug">{q.q}</p>
-                        {q.imageBase64 && <div className="mt-4 inline-block p-2 bg-slate-50 border border-slate-200 rounded-xl"><img src={q.imageBase64} className="h-20 rounded-lg object-contain" /></div>}
-                        <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                          <p className="text-sm font-bold text-slate-500 mb-1">Pilihan: <span className="font-medium text-slate-700">{opts}</span></p>
-                          <p className="text-sm font-black text-emerald-600"><i className="fa-solid fa-check-circle mr-1"></i> Jawaban: {q.answer}</p>
-                        </div>
+                        
+                        {q.imageBase64 && (
+                          <div className="mt-4 inline-block p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                            <img src={q.imageBase64} className="h-24 rounded-lg object-contain" />
+                          </div>
+                        )}
+                        
+                        {activeTab === 'materi' ? (
+                          <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <p className="text-slate-600 font-medium whitespace-pre-wrap">{q.caption}</p>
+                          </div>
+                        ) : (
+                          <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <p className="text-sm font-bold text-slate-500 mb-1">Pilihan: <span className="font-medium text-slate-700">{opts}</span></p>
+                            <p className="text-sm font-black text-emerald-600"><i className="fa-solid fa-check-circle mr-1"></i> Jawaban: {q.answer}</p>
+                            {q.caption && <p className="text-xs font-bold text-slate-400 mt-2 italic">Caption: {q.caption}</p>}
+                          </div>
+                        )}
                       </div>
+                      
                       <div className="flex md:flex-col gap-2 shrink-0 h-fit justify-end">
                         <button onClick={() => deleteQuestion(q.id)} className="p-3 text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-colors font-bold"><i className="fa-solid fa-trash"></i></button>
                       </div>
                     </div>
                   );
-                })
-              )}
+                });
+              })()}
             </div>
           </div>
         )}
