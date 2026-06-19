@@ -4,6 +4,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import { sampleQuestions } from '../data/sampleQuestions';
 import { Dialog } from '../components/DialogManager';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 export default function SessionManager({ session }) {
   const { id } = useParams();
@@ -26,11 +28,14 @@ export default function SessionManager({ session }) {
   // Config Modal State
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [sessionConfig, setSessionConfig] = useState({
-    timerMinutes: 15,
+    timerPretestMinutes: 5,
+    timerMateriMinutes: 10,
+    timerMisiMinutes: 15,
     flow: 'sequential', // 'sequential' or 'free'
     enablePretest: true,
     enableMateri: true,
-    enableMisi: true
+    enableMisi: true,
+    examMode: false
   });
 
   useEffect(() => {
@@ -41,6 +46,19 @@ export default function SessionManager({ session }) {
     if (activeSession) {
       if (activeTab === 'soal') loadQuestions();
       if (activeTab === 'siswa') loadPlayers();
+    }
+    
+    let subscription;
+    if (activeSession && activeTab === 'siswa') {
+      subscription = supabase.channel('siswa-manager-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `session_id=eq.${activeSession.id}` }, payload => {
+          loadPlayers();
+        })
+        .subscribe();
+    }
+    
+    return () => {
+      if (subscription) supabase.removeChannel(subscription);
     }
   }, [activeSession, activeTab]);
 
@@ -73,8 +91,7 @@ export default function SessionManager({ session }) {
     
     if (newStatus === 'live' && finalConfig) {
       updates.config = {
-        ...finalConfig,
-        ends_at: Date.now() + (finalConfig.timerMinutes * 60000)
+        ...finalConfig
       };
     }
 
@@ -270,7 +287,7 @@ export default function SessionManager({ session }) {
                     ) : (
                       <div>
                         <label className="block font-bold text-sm text-slate-500 mb-1.5 uppercase tracking-wide">Isi Materi</label>
-                        <textarea value={qCaption} onChange={e => setQCaption(e.target.value)} className="w-full p-4 border-2 border-slate-200 bg-slate-50 rounded-xl focus:border-teal-500 outline-none font-medium h-48" placeholder="Ketik isi penjelasan materi di sini..."></textarea>
+                        <ReactQuill theme="snow" value={qCaption} onChange={setQCaption} className="bg-white rounded-xl overflow-hidden" style={{height: '300px', marginBottom: '50px'}} />
                       </div>
                     )}
                   </div>
@@ -350,7 +367,7 @@ export default function SessionManager({ session }) {
                         
                         {activeTab === 'materi' ? (
                           <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <p className="text-slate-600 font-medium whitespace-pre-wrap">{q.caption}</p>
+                            <div className="text-slate-600 font-medium whitespace-pre-wrap ql-editor px-0 py-0" dangerouslySetInnerHTML={{ __html: q.caption }} />
                           </div>
                         ) : (
                           <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -431,17 +448,36 @@ export default function SessionManager({ session }) {
             </div>
             
             <div className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-black text-slate-700 mb-2 uppercase tracking-wider">Durasi Kuis (Menit)</label>
-                <div className="flex items-center gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wider">Durasi Pretest (Menit)</label>
                   <input 
                     type="number" 
-                    value={sessionConfig.timerMinutes} 
-                    onChange={e => setSessionConfig({...sessionConfig, timerMinutes: parseInt(e.target.value) || 1})}
-                    className="w-24 bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-black text-xl text-center focus:border-teal-400 focus:outline-none"
+                    value={sessionConfig.timerPretestMinutes} 
+                    onChange={e => setSessionConfig({...sessionConfig, timerPretestMinutes: parseInt(e.target.value) || 1})}
+                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-black text-xl text-center focus:border-teal-400 focus:outline-none"
                     min="1"
                   />
-                  <span className="text-slate-500 font-bold">Menit sebelum balapan otomatis berakhir</span>
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wider">Durasi Materi (Menit)</label>
+                  <input 
+                    type="number" 
+                    value={sessionConfig.timerMateriMinutes} 
+                    onChange={e => setSessionConfig({...sessionConfig, timerMateriMinutes: parseInt(e.target.value) || 1})}
+                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-black text-xl text-center focus:border-amber-400 focus:outline-none"
+                    min="1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wider">Durasi Misi (Menit)</label>
+                  <input 
+                    type="number" 
+                    value={sessionConfig.timerMisiMinutes} 
+                    onChange={e => setSessionConfig({...sessionConfig, timerMisiMinutes: parseInt(e.target.value) || 1})}
+                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-black text-xl text-center focus:border-rose-400 focus:outline-none"
+                    min="1"
+                  />
                 </div>
               </div>
               

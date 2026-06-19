@@ -19,6 +19,44 @@ export default function Quiz() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [refleksiText, setRefleksiText] = useState('');
   const [feedbackState, setFeedbackState] = useState(null);
+  const [timeLeftStr, setTimeLeftStr] = useState('');
+
+  useEffect(() => {
+    let interval;
+    if (['pretest', 'materi', 'misi'].includes(activeModule)) {
+       const endsAt = player?.categoryScores?.[`${activeModule}_ends_at`];
+       if (endsAt) {
+          interval = setInterval(() => {
+             const now = Date.now();
+             const diff = endsAt - now;
+             if (diff <= 0) {
+                setTimeLeftStr('00:00');
+                clearInterval(interval);
+                handleTimeUp(activeModule);
+             } else {
+                const m = Math.floor(diff / 60000).toString().padStart(2, '0');
+                const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                setTimeLeftStr(`${m}:${s}`);
+             }
+          }, 1000);
+       } else {
+          setTimeLeftStr('');
+       }
+    } else {
+       setTimeLeftStr('');
+    }
+    return () => { if(interval) clearInterval(interval); }
+  }, [activeModule, player?.categoryScores]);
+
+  const handleTimeUp = async (mod) => {
+     if (mod === 'pretest') {
+        await markModuleDone('pretest');
+     } else if (mod === 'materi') {
+        await markModuleDone('materi');
+     } else if (mod === 'misi') {
+        setActiveModule('reflection');
+     }
+  };
 
   useEffect(() => {
     const pId = localStorage.getItem('currentPlayerId');
@@ -29,14 +67,13 @@ export default function Quiz() {
     }
     initQuiz(pId, sId);
     
-    // Setup timer to check ends_at periodically
+    // Check if whole session ends_at is present (for backward compatibility)
     const timer = setInterval(() => {
       checkTime();
     }, 5000);
     return () => clearInterval(timer);
   }, []);
 
-  // Make checkTime accessible to closure via ref or just check sessionData
   const checkTime = () => {
     setSessionData(prevSession => {
       if (prevSession && prevSession.config?.ends_at) {
@@ -92,7 +129,19 @@ export default function Quiz() {
     setActiveModule('hub');
   };
 
-  const startModule = (mod) => {
+  const startModule = async (mod) => {
+    const config = sessionData?.config || {};
+    const capitalMod = mod.charAt(0).toUpperCase() + mod.slice(1);
+    const mins = config[`timer${capitalMod}Minutes`] || 0;
+    
+    if (mins > 0) {
+      const catScores = { ...(player?.categoryScores || {}) };
+      if (!catScores[`${mod}_ends_at`]) {
+        catScores[`${mod}_ends_at`] = Date.now() + mins * 60000;
+        await updatePlayerState({ categoryScores: catScores });
+      }
+    }
+    
     setCurrentIndex(0);
     setActiveModule(mod);
   };
@@ -330,8 +379,15 @@ export default function Quiz() {
             </button>
             <span className="font-black text-slate-700 uppercase tracking-widest text-sm">{activeModule === 'pretest' ? 'PRE-TEST' : 'MISI UTAMA'}</span>
           </div>
-          <div className="text-right">
-            <p className="text-xl font-black text-slate-800"><span className="text-teal-500">{currentIndex + 1}</span>/<span>{qsArray.length}</span></p>
+          <div className="flex items-center gap-4">
+            {timeLeftStr && (
+              <div className="bg-rose-50 text-rose-500 px-3 py-1.5 rounded-lg border border-rose-100 font-mono font-black animate-pulse flex items-center gap-2">
+                <i className="fa-regular fa-clock"></i> {timeLeftStr}
+              </div>
+            )}
+            <div className="text-right">
+              <p className="text-xl font-black text-slate-800"><span className="text-teal-500">{currentIndex + 1}</span>/<span>{qsArray.length}</span></p>
+            </div>
           </div>
         </div>
 
@@ -431,9 +487,18 @@ export default function Quiz() {
       <section className="py-6 px-4 flex-1 bg-slate-50">
         <div className="max-w-4xl mx-auto w-full">
           <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-            <button onClick={() => setActiveModule('hub')} className="text-slate-400 hover:text-slate-800 font-black flex items-center gap-2"><i className="fa-solid fa-arrow-left"></i> Hub</button>
-            <span className="font-black text-slate-800 bg-amber-100 text-amber-700 px-3 py-1 rounded-lg uppercase text-xs">Materi Pembelajaran</span>
-            <span className="font-black text-slate-500">{currentIndex + 1} / {materiQs.length}</span>
+            <div className="flex items-center gap-4">
+              <button onClick={() => setActiveModule('hub')} className="text-slate-400 hover:text-slate-800 font-black flex items-center gap-2"><i className="fa-solid fa-arrow-left"></i> Hub</button>
+              <span className="font-black text-slate-800 bg-amber-100 text-amber-700 px-3 py-1 rounded-lg uppercase text-xs hidden sm:block">Materi Pembelajaran</span>
+            </div>
+            <div className="flex items-center gap-4">
+              {timeLeftStr && (
+                <div className="bg-rose-50 text-rose-500 px-3 py-1.5 rounded-lg border border-rose-100 font-mono font-black animate-pulse flex items-center gap-2">
+                  <i className="fa-regular fa-clock"></i> {timeLeftStr}
+                </div>
+              )}
+              <span className="font-black text-slate-500">{currentIndex + 1} / {materiQs.length}</span>
+            </div>
           </div>
 
           <div className="w-full h-2 bg-slate-200 rounded-full mb-6 overflow-hidden">
@@ -448,9 +513,7 @@ export default function Quiz() {
             )}
             <div className="p-8 sm:p-12">
               <h2 className="text-3xl sm:text-4xl font-black text-slate-800 mb-6 leading-tight">{currentM.q}</h2>
-              <div className="prose prose-lg text-slate-600 max-w-none prose-p:font-medium whitespace-pre-wrap">
-                {currentM.caption}
-              </div>
+              <div className="prose prose-lg text-slate-600 max-w-none prose-p:font-medium whitespace-pre-wrap ql-editor px-0 py-0" dangerouslySetInnerHTML={{ __html: currentM.caption }} />
             </div>
           </div>
 
