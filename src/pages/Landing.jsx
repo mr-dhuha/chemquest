@@ -1,16 +1,24 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 const AVATAR_LIST = ['🦊','🐼','🐯','🐸','🐶','🐱','🐭','🐹','🐰','🐻','🐨','🐷','🐮','🐵','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞'];
 
 export default function Landing() {
+  const [searchParams] = useSearchParams();
   const [pin, setPin] = useState('');
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState('🦊');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const pinParam = searchParams.get('pin');
+    if (pinParam) {
+      setPin(pinParam.toUpperCase());
+    }
+  }, [searchParams]);
 
   const handleJoin = async (mode) => {
     setError('');
