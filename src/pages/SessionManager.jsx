@@ -108,8 +108,13 @@ export default function SessionManager({ session }) {
 
   const saveQuestion = async () => {
     const optsArray = qOptions.split(',').map(s => s.trim()).filter(Boolean);
-    if (!qText || !qAnswer || optsArray.length < 2) return await Dialog.alert("Lengkapi minimal pertanyaan, jawaban, dan 2 opsi jawaban.", "Data Tidak Lengkap");
-    if (!optsArray.includes(qAnswer.trim())) return await Dialog.alert("Jawaban Benar harus diketik persis sama dengan salah satu opsi.", "Jawaban Tidak Valid");
+    
+    if (qCategory === 'MATERI') {
+      if (!qText) return await Dialog.alert("Lengkapi minimal konten/isi materi.", "Data Tidak Lengkap");
+    } else {
+      if (!qText || !qAnswer || optsArray.length < 2) return await Dialog.alert("Lengkapi minimal pertanyaan, jawaban, dan 2 opsi jawaban.", "Data Tidak Lengkap");
+      if (!optsArray.includes(qAnswer.trim())) return await Dialog.alert("Jawaban Benar harus diketik persis sama dengan salah satu opsi.", "Jawaban Tidak Valid");
+    }
 
     const payload = {
       session_id: id,
@@ -477,6 +482,16 @@ export default function SessionManager({ session }) {
                 <label className="flex items-center justify-between cursor-pointer group opacity-50">
                   <span className="font-bold text-slate-600"><i className="fa-solid fa-gamepad w-6 text-center text-rose-400"></i> Misi Kuis (Balapan)</span>
                   <input type="checkbox" className="w-5 h-5 accent-teal-500" checked={true} readOnly />
+                </label>
+              </div>
+
+              <div className="bg-rose-50 border border-rose-100 rounded-2xl p-5">
+                <label className="flex items-start justify-between cursor-pointer group gap-4">
+                  <div>
+                    <span className="font-black text-rose-700 block mb-1"><i className="fa-solid fa-user-ninja w-6 text-center"></i> Mode Ujian (Tanpa Feedback)</span>
+                    <span className="text-xs font-bold text-rose-600/70 block">Siswa dapat bolak-balik soal dan mengubah jawaban. Jawaban benar/salah tidak akan ditampilkan secara *live* di layar siswa.</span>
+                  </div>
+                  <input type="checkbox" className="w-6 h-6 mt-1 accent-rose-500 rounded-md cursor-pointer shrink-0" checked={sessionConfig.examMode} onChange={e => setSessionConfig({...sessionConfig, examMode: e.target.checked})} />
                 </label>
               </div>
             </div>

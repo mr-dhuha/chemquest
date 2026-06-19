@@ -118,38 +118,62 @@ export default function Quiz() {
   const handleMisiAnswer = async (selectedOpt) => {
     if (feedbackState) return;
     
+    const config = sessionData?.config || {};
     const currentQ = misiQs[currentIndex];
-    const isCorrect = selectedOpt === currentQ.answer;
     
-    let scoreChange = 0;
-    if (isCorrect) {
-      scoreChange = 10;
-      setFeedbackState({ isCorrect: true, text: '+10 KECEPATAN!' });
+    if (config.examMode) {
+      const catScores = { ...player.categoryScores };
+      const answers = catScores.answers || {};
+      answers[currentQ.id] = selectedOpt;
+      catScores.answers = answers;
+      
+      let newScore = 0;
+      misiQs.forEach(q => {
+        if (answers[q.id] === q.answer) {
+          newScore += 10;
+        }
+      });
+      
+      const newProgress = (Object.keys(answers).length / misiQs.length) * 100;
+      
+      await updatePlayerState({
+        score: newScore,
+        progress: newProgress,
+        categoryScores: catScores
+      });
     } else {
-      setFeedbackState({ isCorrect: false, text: 'TERSANDUNG!' });
-    }
-
-    const newScore = player.score + scoreChange;
-    const catScores = { ...player.categoryScores };
-    if (isCorrect) catScores[currentQ.category] = (catScores[currentQ.category] || 0) + 10;
-    
-    const nextIndex = currentIndex + 1;
-    const newProgress = (nextIndex / misiQs.length) * 100;
-    
-    await updatePlayerState({
-      score: newScore,
-      progress: newProgress,
-      categoryScores: catScores
-    });
-
-    setTimeout(() => {
-      setFeedbackState(null);
-      if (nextIndex < misiQs.length) {
-        setCurrentIndex(nextIndex);
+      const isCorrect = selectedOpt === currentQ.answer;
+      
+      let scoreChange = 0;
+      if (isCorrect) {
+        scoreChange = 10;
+        setFeedbackState({ isCorrect: true, text: 'BENAR!' });
       } else {
-        setActiveModule('reflection');
+        setFeedbackState({ isCorrect: false, text: 'SALAH!' });
       }
-    }, 1200);
+
+      const newScore = player.score + scoreChange;
+      const catScores = { ...player.categoryScores };
+      if (isCorrect) catScores[currentQ.category] = (catScores[currentQ.category] || 0) + 10;
+      
+      const nextIndex = currentIndex + 1;
+      const newProgress = (nextIndex / misiQs.length) * 100;
+      
+      await updatePlayerState({
+        score: newScore,
+        progress: newProgress,
+        categoryScores: catScores
+      });
+
+      setTimeout(() => {
+        setFeedbackState(null);
+        if (nextIndex < misiQs.length) {
+          setCurrentIndex(nextIndex);
+        } else {
+          setActiveModule('reflection');
+        }
+      }, 1200);
+    }
   };
 
   const submitReflection = async () => {
@@ -285,11 +309,15 @@ export default function Quiz() {
 
   // Generic Question Renderer for Pretest and Misi
   const renderQuestion = (qsArray, handler) => {
+    const config = sessionData?.config || {};
     const currentQ = qsArray[currentIndex];
     let opts = [];
     try { opts = typeof currentQ?.options === 'string' ? JSON.parse(currentQ.options) : currentQ?.options || []; } 
     catch(e) { opts = []; }
 
+    const isExamMode = config.examMode && activeModule === 'misi';
+    const catScores = player?.categoryScores || {};
+    const answers = catScores.answers || {};
     const progressPct = ((currentIndex) / qsArray.length) * 100;
 
     return (
@@ -324,19 +352,54 @@ export default function Quiz() {
           <h3 className="text-2xl sm:text-3xl font-black text-slate-800 mb-10 text-center leading-tight">{currentQ.q}</h3>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {opts.map((opt, i) => (
-              <button 
-                key={i} 
-                onClick={() => handler(opt)}
-                disabled={!!feedbackState}
-                className={`p-5 text-lg font-black rounded-2xl border-4 border-slate-100 bg-white text-slate-700 transition-all text-left flex items-center justify-between group 
-                  ${feedbackState ? 'opacity-50' : 'hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700 hover:shadow-md'}`}
-              >
-                <span>{opt}</span> 
-              </button>
-            ))}
+            {opts.map((opt, i) => {
+              const isSelected = isExamMode && answers[currentQ.id] === opt;
+              return (
+                <button 
+                  key={i} 
+                  onClick={() => handler(opt)}
+                  disabled={!!feedbackState}
+                  className={`p-5 text-lg font-black rounded-2xl border-4 transition-all text-left flex items-center justify-between group 
+                    ${feedbackState ? 'opacity-50 border-slate-100 bg-white text-slate-700' : 
+                      isSelected ? 'border-teal-400 bg-teal-50 text-teal-700 shadow-md ring-2 ring-teal-200' : 
+                      'border-slate-100 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700 hover:shadow-md'}`}
+                >
+                  <span>{opt}</span> 
+                  {isSelected && <i className="fa-solid fa-circle-check text-teal-500 text-2xl"></i>}
+                </button>
+              );
+            })}
           </div>
         </div>
+
+        {/* Exam Navigation */}
+        {isExamMode && (
+          <div className="flex justify-between items-center mt-6">
+            <button 
+              onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+              disabled={currentIndex === 0}
+              className={`px-6 py-3 rounded-xl font-black transition-colors ${currentIndex === 0 ? 'bg-slate-100 text-slate-400' : 'bg-white text-slate-600 hover:bg-slate-200 shadow-sm'}`}
+            >
+              <i className="fa-solid fa-arrow-left"></i> Sebelumnya
+            </button>
+            
+            {currentIndex + 1 < qsArray.length ? (
+              <button 
+                onClick={() => setCurrentIndex(currentIndex + 1)}
+                className="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-black shadow-lg transition-transform hover:-translate-y-1"
+              >
+                Selanjutnya <i className="fa-solid fa-arrow-right"></i>
+              </button>
+            ) : (
+              <button 
+                onClick={() => setActiveModule('reflection')}
+                className="px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-black shadow-lg transition-transform hover:-translate-y-1"
+              >
+                Kumpulkan Misi <i className="fa-solid fa-flag-checkered"></i>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Feedback Overlay */}
         {feedbackState && (
