@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import { sampleQuestions } from '../data/sampleQuestions';
+import { Dialog } from '../components/DialogManager';
 
 export default function SessionManager({ session }) {
   const { id } = useParams();
@@ -82,14 +83,14 @@ export default function SessionManager({ session }) {
       setActiveSession({ ...activeSession, status: newStatus, config: updates.config || activeSession.config });
       setShowConfigModal(false);
     } else {
-      alert("Gagal update status: " + error.message);
+      await Dialog.alert("Gagal update status: " + error.message, "Error");
     }
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 500000) return alert("Ukuran maksimal gambar 500KB agar arena tidak berat.");
+      if (file.size > 500000) return await Dialog.alert("Ukuran maksimal gambar 500KB agar arena tidak berat.", "Ukuran File Terlalu Besar");
       const reader = new FileReader();
       reader.onloadend = () => setQImage(reader.result);
       reader.readAsDataURL(file);
@@ -97,18 +98,18 @@ export default function SessionManager({ session }) {
   };
 
   const loadSampleQuestions = async () => {
-    if (window.confirm("Muat 3 soal contoh ke sesi ini?")) {
+    if (await Dialog.confirm("Muat 3 soal contoh ke sesi ini?", "Muat Contoh Soal")) {
       const payload = sampleQuestions.map(sq => ({ ...sq, session_id: id }));
       const { error } = await supabase.from('questions').insert(payload);
-      if (error) alert("Gagal memuat: " + error.message);
+      if (error) await Dialog.alert("Gagal memuat: " + error.message, "Error");
       else loadQuestions();
     }
   };
 
   const saveQuestion = async () => {
     const optsArray = qOptions.split(',').map(s => s.trim()).filter(Boolean);
-    if (!qText || !qAnswer || optsArray.length < 2) return alert("Lengkapi minimal pertanyaan, jawaban, dan 2 opsi jawaban.");
-    if (!optsArray.includes(qAnswer.trim())) return alert("Jawaban Benar harus diketik persis sama dengan salah satu opsi.");
+    if (!qText || !qAnswer || optsArray.length < 2) return await Dialog.alert("Lengkapi minimal pertanyaan, jawaban, dan 2 opsi jawaban.", "Data Tidak Lengkap");
+    if (!optsArray.includes(qAnswer.trim())) return await Dialog.alert("Jawaban Benar harus diketik persis sama dengan salah satu opsi.", "Jawaban Tidak Valid");
 
     const payload = {
       session_id: id,
@@ -126,19 +127,19 @@ export default function SessionManager({ session }) {
       setQText(''); setQOptions(''); setQAnswer(''); setQImage(null); setQCaption('');
       loadQuestions();
     } else {
-      alert(error.message);
+      await Dialog.alert(error.message, "Gagal Menyimpan");
     }
   };
 
   const deleteQuestion = async (qId) => {
-    if (window.confirm("Hapus soal ini?")) {
+    if (await Dialog.confirm("Hapus soal ini?", "Konfirmasi Hapus")) {
       await supabase.from('questions').delete().eq('id', qId);
       loadQuestions();
     }
   };
 
   const kickPlayer = async (pId) => {
-    if (window.confirm("Diskualifikasi siswa ini?")) {
+    if (await Dialog.confirm("Diskualifikasi siswa ini?", "Konfirmasi Diskualifikasi")) {
       await supabase.from('players').delete().eq('id', pId);
       loadPlayers();
     }

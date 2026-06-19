@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { Dialog } from '../components/DialogManager';
 
 export default function TeacherAuth() {
   const [email, setEmail] = useState('');
@@ -31,8 +32,8 @@ export default function TeacherAuth() {
     const { error: err } = await supabase.auth.signUp({ email, password });
     setLoading(false);
     
-    if (err) setError(err.message);
-    else alert("Akun terdaftar! Silakan Login masuk."); // Ideally replace with a proper toast/modal
+    if (err) await Dialog.alert(err.message, "Gagal Mendaftar");
+    else await Dialog.alert("Akun terdaftar! Silakan Login masuk.", "Berhasil");
   };
 
   return (

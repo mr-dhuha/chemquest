@@ -22,12 +22,17 @@ export default function Navbar({ session }) {
       <div className="flex items-center gap-4">
         {session && (
           <>
+            {session.user?.email === 'mrdhuhaofficial@gmail.com' && (
+              <Link to="/superadmin" className="text-sm bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white transition-colors px-3 py-2 rounded-xl font-black border border-rose-100 hidden sm:block">
+                <i className="fa-solid fa-shield-halved mr-1"></i> Admin
+              </Link>
+            )}
             <span className="text-sm font-bold text-slate-500 hidden sm:block">
               {session.user?.email?.split('@')[0] || 'Guru'}
             </span>
             <button 
               onClick={handleLogout} 
-              className="text-sm bg-rose-100 text-rose-600 hover:bg-rose-500 hover:text-white transition-colors px-4 py-2 rounded-xl font-bold"
+              className="text-sm bg-slate-100 text-slate-600 hover:bg-rose-500 hover:text-white transition-colors px-4 py-2 rounded-xl font-bold"
             >
               <i className="fa-solid fa-sign-out-alt mr-1"></i> Keluar
             </button>

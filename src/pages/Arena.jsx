@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { Dialog } from '../components/DialogManager';
 
 export default function Arena({ session: teacherSession }) {
   const { pin } = useParams();
@@ -18,8 +19,9 @@ export default function Arena({ session: teacherSession }) {
         if (data) {
           setSessionData(data);
         } else {
-          alert('Sesi Arena tidak ditemukan atau belum live.');
-          navigate('/');
+          Dialog.alert('Sesi Arena tidak ditemukan atau belum live.', 'Arena Tidak Tersedia').then(() => {
+            navigate('/');
+          });
         }
       });
     }

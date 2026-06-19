@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { Dialog } from '../components/DialogManager';
 
 export default function TeacherDashboard({ session }) {
   const [sessions, setSessions] = useState([]);
@@ -29,7 +30,7 @@ export default function TeacherDashboard({ session }) {
   };
 
   const handleCreateSession = async () => {
-    const title = window.prompt("Masukkan judul sesi kuis (misal: Latihan Asam Basa XA):");
+    const title = await Dialog.prompt("Masukkan judul sesi kuis (misal: Latihan Asam Basa XA):", "Buat Sesi Baru");
     if (!title || !title.trim()) return;
     
     const pin = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -41,7 +42,27 @@ export default function TeacherDashboard({ session }) {
       status: 'draft'
     });
     
-    if (error) alert("Gagal membuat sesi: " + error.message);
+    if (error) await Dialog.alert("Gagal membuat sesi: " + error.message, "Error");
+    else loadSessions();
+  };
+
+  const handleRenameSession = async (e, id, oldTitle) => {
+    e.stopPropagation();
+    const newTitle = await Dialog.prompt("Ubah judul sesi:", "Ganti Nama Sesi", oldTitle);
+    if (!newTitle || !newTitle.trim() || newTitle.trim() === oldTitle) return;
+
+    const { error } = await supabase.from('sessions').update({ title: newTitle.trim() }).eq('id', id);
+    if (error) await Dialog.alert("Gagal mengganti nama: " + error.message, "Error");
+    else loadSessions();
+  };
+
+  const handleDeleteSession = async (e, id) => {
+    e.stopPropagation();
+    const confirmed = await Dialog.confirm("Apakah Anda yakin ingin menghapus sesi ini secara permanen? Semua soal dan data siswa akan hilang.", "Hapus Sesi");
+    if (!confirmed) return;
+
+    const { error } = await supabase.from('sessions').delete().eq('id', id);
+    if (error) await Dialog.alert("Gagal menghapus sesi: " + error.message, "Error");
     else loadSessions();
   };
 
@@ -79,9 +100,9 @@ export default function TeacherDashboard({ session }) {
                 <div 
                   key={s.id} 
                   onClick={() => navigate(`/session/${s.id}`)}
-                  className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border-2 border-slate-100 hover:border-teal-300 hover:shadow-xl transition-all cursor-pointer group"
+                  className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-sm border-2 border-slate-100 hover:border-teal-300 hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden flex flex-col"
                 >
-                  <div className="flex justify-between items-start mb-6">
+                  <div className="flex justify-between items-start mb-4">
                     <span className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black tracking-wider uppercase ${isLive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                       {s.status}
                     </span>
@@ -89,13 +110,33 @@ export default function TeacherDashboard({ session }) {
                       PIN: <span className="text-slate-700">{s.pin}</span>
                     </span>
                   </div>
-                  <h3 className="text-2xl font-black text-slate-800 mb-2 group-hover:text-teal-600 transition-colors line-clamp-2">
+                  
+                  <h3 className="text-2xl font-black text-slate-800 mb-2 group-hover:text-teal-600 transition-colors line-clamp-2 flex-1">
                     {s.title}
                   </h3>
-                  <p className="text-sm text-slate-400 font-bold">
-                    <i className="fa-solid fa-calendar-day mr-1"></i> 
-                    {new Date(s.created_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}
-                  </p>
+                  
+                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-50">
+                    <p className="text-sm text-slate-400 font-bold">
+                      <i className="fa-solid fa-calendar-day mr-1"></i> 
+                      {new Date(s.created_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}
+                    </p>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={(e) => handleRenameSession(e, s.id, s.title)}
+                        className="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 hover:bg-amber-500 hover:text-white flex items-center justify-center transition-colors shadow-sm"
+                        title="Ganti Nama"
+                      >
+                        <i className="fa-solid fa-pen text-xs"></i>
+                      </button>
+                      <button 
+                        onClick={(e) => handleDeleteSession(e, s.id)}
+                        className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors shadow-sm"
+                        title="Hapus Sesi"
+                      >
+                        <i className="fa-solid fa-trash text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             })
