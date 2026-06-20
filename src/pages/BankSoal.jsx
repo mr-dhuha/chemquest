@@ -5,8 +5,9 @@ import { Dialog } from '../components/DialogManager';
 
 export default function BankSoal({ session, profile }) {
   const [categories, setCategories] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('');
+  const [activeCategoryId, setActiveCategoryId] = useState('');
   const [questions, setQuestions] = useState([]);
+  const [isLegacy, setIsLegacy] = useState(false);
 
   // QForm states
   const [showQForm, setShowQForm] = useState(false);
@@ -21,36 +22,60 @@ export default function BankSoal({ session, profile }) {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
+  const activeCategory = categories.find(c => c.id === activeCategoryId);
+  const isOwnerOrAdmin = activeCategory && (profile?.can_access_all_banks || activeCategory.teacher_id === session.user.id);
+  const canEdit = isOwnerOrAdmin || (activeCategory?.visibility === 'collaborative');
+
   useEffect(() => {
     loadCategories();
   }, []);
 
   useEffect(() => {
-    if (activeCategory) {
+    if (activeCategoryId) {
       loadQuestions();
     } else {
       setQuestions([]);
     }
-  }, [activeCategory]);
+  }, [activeCategoryId]);
 
   const loadCategories = async () => {
-    let query = supabase.from('question_banks').select('category');
-    if (profile && !profile.can_access_all_banks) {
-      query = query.eq('teacher_id', session.user.id);
+    const { data, error } = await supabase.from('bank_categories').select('*, teachers(email)');
+    
+    if (error && error.code === '42P01') {
+      setIsLegacy(true);
+      const { data: oldData } = await supabase.from('question_banks').select('category, teacher_id');
+      if (oldData) {
+        const uniqueCats = [...new Set(oldData.map(d => d.category))];
+        setCategories(uniqueCats.map(cat => ({
+          id: cat,
+          name: cat,
+          teacher_id: session.user.id,
+          visibility: 'private',
+          teachers: { email: 'Legacy Mode' }
+        })).sort((a,b) => a.name.localeCompare(b.name)));
+      }
+      return;
     }
-    const { data, error } = await query;
-    if (error) console.error("Error loadCategories:", error);
+
     if (data && !error) {
-      const uniqueCats = [...new Set(data.map(d => d.category))];
-      setCategories(uniqueCats.sort());
+      let filtered = data;
+      if (profile && !profile.can_access_all_banks) {
+         filtered = data.filter(c => c.teacher_id === session.user.id || c.visibility === 'public' || c.visibility === 'collaborative');
+      }
+      setCategories(filtered.sort((a,b) => a.name.localeCompare(b.name)));
     }
   };
 
   const loadQuestions = async () => {
-    let query = supabase.from('question_banks').select('*').eq('category', activeCategory).order('created_at', { ascending: true });
-    if (profile && !profile.can_access_all_banks) {
-      query = query.eq('teacher_id', session.user.id);
+    if (!activeCategory) return;
+    let query = supabase.from('question_banks').select('*').order('created_at', { ascending: true });
+    
+    if (isLegacy) {
+      query = query.eq('category', activeCategory.name);
+    } else {
+      query = query.eq('bank_category_id', activeCategory.id);
     }
+
     const { data, error } = await query;
     if (error) console.error("Error loadQuestions:", error);
     if (data && !error) setQuestions(data);
@@ -61,19 +86,93 @@ export default function BankSoal({ session, profile }) {
     if (!newCat || !newCat.trim()) return;
     const catName = newCat.trim();
 
-    // To create a category, we must insert a dummy row or just set it as active and wait for first insertion.
-    // It's cleaner to set it as active category. It will "exist" once a question is added.
-    if (!categories.includes(catName)) {
-      setCategories(prev => [...prev, catName].sort());
+    if (isLegacy) {
+      const newObj = { id: catName, name: catName, teacher_id: session.user.id, visibility: 'private', teachers: { email: session.user.email } };
+      setCategories(prev => [...prev, newObj].sort((a,b) => a.name.localeCompare(b.name)));
+      setActiveCategoryId(catName);
+      return;
     }
-    setActiveCategory(catName);
+
+    const { data, error } = await supabase.from('bank_categories').insert({
+      name: catName,
+      teacher_id: session.user.id,
+      visibility: 'private'
+    }).select('*, teachers(email)').single();
+
+    if (error) {
+      if (error.code === '23505') Dialog.alert("Kategori dengan nama ini sudah ada.");
+      else Dialog.alert("Gagal membuat kategori: " + error.message);
+      return;
+    }
+    setCategories(prev => [...prev, data].sort((a,b) => a.name.localeCompare(b.name)));
+    setActiveCategoryId(data.id);
   };
 
-  const deleteCategory = async (catName) => {
-    if (await Dialog.confirm(`Hapus kategori "${catName}" beserta SELURUH soal di dalamnya?`, "Hapus Kategori")) {
-      await supabase.from('question_banks').delete().eq('category', catName);
-      if (activeCategory === catName) setActiveCategory('');
+  const deleteCategory = async (catId) => {
+    const cat = categories.find(c => c.id === catId);
+    if (await Dialog.confirm(`Hapus kategori "${cat?.name}" beserta SELURUH soal di dalamnya?`, "Hapus Kategori")) {
+      if (isLegacy) {
+        await supabase.from('question_banks').delete().eq('category', cat.name);
+      } else {
+        await supabase.from('bank_categories').delete().eq('id', catId);
+      }
+      if (activeCategoryId === catId) setActiveCategoryId('');
       loadCategories();
+    }
+  };
+
+  const handleCloneCategory = async () => {
+    if (!activeCategory) return;
+    if (!await Dialog.confirm(`Buat salinan kategori "${activeCategory.name}" ke akun Anda agar bisa diedit secara bebas?`, "Kloning (Branch)")) return;
+
+    // Create new bank_category
+    const cloneName = `${activeCategory.name} (Copy)`;
+    const { data: newCat, error: catError } = await supabase.from('bank_categories').insert({
+      name: cloneName,
+      teacher_id: session.user.id,
+      visibility: 'private'
+    }).select('*, teachers(email)').single();
+
+    if (catError) return Dialog.alert("Gagal membuat salinan kategori: " + catError.message);
+
+    // Copy questions
+    if (questions.length > 0) {
+      const clonedQs = questions.map(q => ({
+        bank_category_id: newCat.id,
+        category: cloneName,
+        type: q.type,
+        q: q.q,
+        options: q.options,
+        answer: q.answer,
+        imageBase64: q.imageBase64,
+        caption: q.caption,
+        teacher_id: session.user.id
+      }));
+      await supabase.from('question_banks').insert(clonedQs);
+    }
+
+    await Dialog.alert("Berhasil mengkloning bank soal!", "Sukses");
+    loadCategories().then(() => setActiveCategoryId(newCat.id));
+  };
+
+  const handleChangeVisibility = async () => {
+    if (isLegacy) return Dialog.alert("Jalankan migrasi database terlebih dahulu.");
+    
+    // Choose visibility via standard prompt logic (or custom dialog). 
+    // We'll use a prompt with specific instructions for now.
+    const vis = await Dialog.prompt("Pilih Visibilitas:\n1 = Private (Hanya Anda)\n2 = Public (Bisa dilihat/dicopy orang)\n3 = Collaborative (Orang lain bisa edit)\nKetik angka 1, 2, atau 3:", "Ubah Hak Akses", activeCategory.visibility === 'private' ? '1' : activeCategory.visibility === 'public' ? '2' : '3');
+    
+    if (!vis) return;
+    let newVis = 'private';
+    if (vis === '2') newVis = 'public';
+    else if (vis === '3') newVis = 'collaborative';
+
+    const { error } = await supabase.from('bank_categories').update({ visibility: newVis }).eq('id', activeCategory.id);
+    if (!error) {
+      supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Mengubah Hak Akses Kategori', details: `Kategori: ${activeCategory.name} -> ${newVis}` }).then();
+      loadCategories();
+    } else {
+      Dialog.alert("Gagal update visibilitas: " + error.message);
     }
   };
 
@@ -104,14 +203,15 @@ export default function BankSoal({ session, profile }) {
     }
 
     const payload = {
-      category: activeCategory,
-      type: qType === 'soal' ? 'misi' : 'materi', // for simplicity, use 'misi' for bank questions
+      category: activeCategory.name,
+      bank_category_id: isLegacy ? null : activeCategory.id,
+      type: qType === 'soal' ? 'misi' : 'materi',
       q: qText,
       options: qType === 'soal' ? qOptions.split(',').map(s => s.trim()).filter(Boolean) : [],
       answer: qAnswer,
       imageBase64: qImage,
       caption: qCaption,
-      teacher_id: session.user.id
+      teacher_id: session.user.id // Keep the actual creator as the author of the question
     };
 
     if (editQuestionId) {
@@ -119,22 +219,20 @@ export default function BankSoal({ session, profile }) {
       if (error) {
         await Dialog.alert("Gagal update soal: " + error.message, "Error");
       } else {
-        supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Memperbarui soal di Bank Soal', details: `Kategori: ${activeCategory}` }).then();
+        supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Memperbarui soal', details: `Kategori: ${activeCategory.name}` }).then();
         setShowQForm(false);
         resetForm();
         loadQuestions();
-        if (!categories.includes(activeCategory)) loadCategories();
       }
     } else {
       const { error } = await supabase.from('question_banks').insert([payload]);
       if (error) {
         await Dialog.alert("Gagal simpan soal: " + error.message, "Error");
       } else {
-        supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Membuat soal baru di Bank Soal', details: `Kategori: ${activeCategory}` }).then();
+        supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Membuat soal baru', details: `Kategori: ${activeCategory.name}` }).then();
         setShowQForm(false);
         resetForm();
         loadQuestions();
-        if (!categories.includes(activeCategory)) loadCategories();
       }
     }
   };
@@ -161,7 +259,7 @@ export default function BankSoal({ session, profile }) {
       const { error } = await supabase.from('question_banks').delete().eq('id', id);
       if (error) await Dialog.alert("Gagal hapus soal: " + error.message, "Error");
       else {
-        supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Menghapus soal di Bank Soal', details: `Kategori: ${activeCategory}` }).then();
+        supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Menghapus soal', details: `Kategori: ${activeCategory.name}` }).then();
         loadQuestions();
       }
     }
@@ -178,7 +276,7 @@ export default function BankSoal({ session, profile }) {
             <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
               <i className="fa-solid fa-vault text-amber-500"></i> Bank Soal & Materi
             </h1>
-            <p className="text-slate-500 mt-1 font-medium">Buat template soal dan materi untuk di-import ke kelas-kelas Anda.</p>
+            <p className="text-slate-500 mt-1 font-medium">Kelola soal Anda, kloning bank publik, atau berkolaborasi dengan guru lain.</p>
           </div>
 
           <button
@@ -191,26 +289,40 @@ export default function BankSoal({ session, profile }) {
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Categories */}
-          <div className="lg:w-1/4">
+          <div className="lg:w-1/3 xl:w-1/4 flex flex-col gap-4">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-4 bg-slate-100 border-b border-slate-200">
                 <h2 className="font-black text-slate-700"><i className="fa-solid fa-folder-tree mr-2 text-slate-400"></i> Kategori</h2>
               </div>
-              <div className="p-2 space-y-1">
+              <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
                 {categories.length === 0 ? (
                   <p className="text-sm text-slate-400 p-4 text-center italic">Belum ada kategori.</p>
                 ) : categories.map(cat => (
                   <div
-                    key={cat}
-                    className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${activeCategory === cat ? 'bg-indigo-50 text-indigo-700 font-bold border border-indigo-100' : 'hover:bg-slate-50 text-slate-600'}`}
-                    onClick={() => setActiveCategory(cat)}
+                    key={cat.id}
+                    className={`p-3 rounded-xl cursor-pointer transition-colors ${activeCategoryId === cat.id ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-slate-50 border border-transparent'}`}
+                    onClick={() => setActiveCategoryId(cat.id)}
                   >
-                    <span className="truncate pr-2"><i className={`fa-solid ${activeCategory === cat ? 'fa-folder-open text-indigo-500' : 'fa-folder text-slate-300'} mr-2`}></i> {cat}</span>
-                    {activeCategory === cat && (
-                      <button onClick={(e) => { e.stopPropagation(); deleteCategory(cat); }} className="text-rose-400 hover:text-rose-600 p-1">
-                        <i className="fa-solid fa-trash-can"></i>
-                      </button>
-                    )}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className={`font-bold block truncate ${activeCategoryId === cat.id ? 'text-indigo-700' : 'text-slate-700'}`}>
+                          <i className={`fa-solid ${activeCategoryId === cat.id ? 'fa-folder-open text-indigo-500' : 'fa-folder text-slate-300'} mr-2`}></i> 
+                          {cat.name}
+                        </span>
+                        <div className="flex flex-col mt-1 gap-1">
+                          <span className="text-[10px] text-slate-400 truncate"><i className="fa-regular fa-user mr-1"></i>{cat.teachers?.email}</span>
+                          <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded w-fit ${cat.visibility === 'public' ? 'bg-sky-100 text-sky-600' : cat.visibility === 'collaborative' ? 'bg-amber-100 text-amber-600' : 'bg-slate-200 text-slate-500'}`}>
+                            {cat.visibility}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {activeCategoryId === cat.id && (profile?.can_access_all_banks || cat.teacher_id === session.user.id) && (
+                        <button onClick={(e) => { e.stopPropagation(); deleteCategory(cat.id); }} className="text-rose-400 hover:text-rose-600 shrink-0">
+                          <i className="fa-solid fa-trash-can"></i>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -218,9 +330,9 @@ export default function BankSoal({ session, profile }) {
           </div>
 
           {/* Main Content Area */}
-          <div className="lg:w-3/4">
+          <div className="lg:w-2/3 xl:w-3/4">
             {!activeCategory ? (
-              <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-200 h-full flex flex-col items-center justify-center">
+              <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-200 h-full flex flex-col items-center justify-center min-h-[400px]">
                 <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
                   <i className="fa-solid fa-folder-open text-4xl text-indigo-300"></i>
                 </div>
@@ -228,17 +340,41 @@ export default function BankSoal({ session, profile }) {
                 <p className="text-slate-500 max-w-sm mx-auto">Silakan pilih kategori di menu samping atau buat kategori baru untuk mulai menambahkan soal dan materi.</p>
               </div>
             ) : (
-              <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
-                  <h3 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-                    <i className="fa-solid fa-folder text-indigo-500"></i> {activeCategory}
-                  </h3>
-                  <button
-                    onClick={() => { resetForm(); setShowQForm(true); }}
-                    className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"
-                  >
-                    <i className="fa-solid fa-plus"></i> Tambah Item
-                  </button>
+              <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 min-h-[400px]">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-4 mb-6 gap-4">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-800 flex items-center gap-2 mb-1">
+                      <i className="fa-solid fa-folder text-indigo-500"></i> {activeCategory.name}
+                    </h3>
+                    <div className="flex items-center gap-3 text-sm font-bold text-slate-500">
+                      <span><i className="fa-regular fa-user"></i> {activeCategory.teachers?.email}</span>
+                      <span className="text-slate-300">|</span>
+                      <span>{activeCategory.visibility.toUpperCase()}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {isOwnerOrAdmin && !isLegacy && (
+                      <button onClick={handleChangeVisibility} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold flex items-center gap-2">
+                        <i className="fa-solid fa-gear"></i> Akses
+                      </button>
+                    )}
+                    
+                    {!canEdit && activeCategory.visibility === 'public' && !isLegacy && (
+                      <button onClick={handleCloneCategory} className="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg shadow-sky-500/20">
+                        <i className="fa-solid fa-code-branch"></i> Kloning
+                      </button>
+                    )}
+
+                    {canEdit && (
+                      <button
+                        onClick={() => { resetForm(); setShowQForm(true); }}
+                        className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg shadow-teal-500/20"
+                      >
+                        <i className="fa-solid fa-plus"></i> Tambah Item
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Form Input */}
@@ -335,14 +471,16 @@ export default function BankSoal({ session, profile }) {
                     </div>
                   ) : questions.map((q, i) => (
                     <div key={q.id} className="border-2 border-slate-100 p-5 rounded-2xl hover:border-indigo-200 transition-colors bg-white relative group">
-                      <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEditQuestion(q)} className="w-8 h-8 rounded-lg bg-sky-50 text-sky-500 hover:bg-sky-500 hover:text-white flex items-center justify-center transition-colors">
-                          <i className="fa-solid fa-pencil text-sm"></i>
-                        </button>
-                        <button onClick={() => deleteQuestion(q.id)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors">
-                          <i className="fa-solid fa-trash-can text-sm"></i>
-                        </button>
-                      </div>
+                      {canEdit && (
+                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleEditQuestion(q)} className="w-8 h-8 rounded-lg bg-sky-50 text-sky-500 hover:bg-sky-500 hover:text-white flex items-center justify-center transition-colors">
+                            <i className="fa-solid fa-pencil text-sm"></i>
+                          </button>
+                          <button onClick={() => deleteQuestion(q.id)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors">
+                            <i className="fa-solid fa-trash-can text-sm"></i>
+                          </button>
+                        </div>
+                      )}
 
                       <div className="flex items-start gap-4 pr-16">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${q.type === 'materi' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>

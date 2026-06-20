@@ -14,9 +14,9 @@ export const Dialog = {
       if (dialogCallback) dialogCallback({ type: 'confirm', message, title, resolve });
     });
   },
-  prompt: (message, title = "Input Data", defaultValue = "") => {
+  prompt: (message, title = "Input Data", defaultValue = "", isPassword = false) => {
     return new Promise((resolve) => {
-      if (dialogCallback) dialogCallback({ type: 'prompt', message, title, defaultValue, resolve });
+      if (dialogCallback) dialogCallback({ type: 'prompt', message, title, defaultValue, isPassword, resolve });
     });
   }
 };
@@ -24,12 +24,14 @@ export const Dialog = {
 export default function DialogManager() {
   const [state, setState] = useState(null);
   const [inputValue, setInputValue] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     dialogCallback = (newState) => {
       setState(newState);
       if (newState?.type === 'prompt') {
         setInputValue(newState.defaultValue || "");
+        setShowPassword(false);
       }
     };
     return () => { dialogCallback = null; };
@@ -55,14 +57,26 @@ export default function DialogManager() {
           <p className="text-slate-600 font-medium mb-6">{state.message}</p>
 
           {state.type === 'prompt' && (
-            <input 
-              type="text" 
-              autoFocus
-              value={inputValue} 
-              onChange={e => setInputValue(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && close(inputValue)}
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 focus:border-teal-400 focus:outline-none mb-2"
-            />
+            <div className="relative mb-2">
+              <input 
+                type={state.isPassword ? (showPassword ? 'text' : 'password') : 'text'} 
+                autoFocus
+                value={inputValue} 
+                onChange={e => setInputValue(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && close(inputValue)}
+                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 focus:border-teal-400 focus:outline-none"
+              />
+              {state.isPassword && (
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                  tabIndex="-1"
+                >
+                  <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              )}
+            </div>
           )}
         </div>
 

@@ -6,7 +6,10 @@ import { Dialog } from '../components/DialogManager';
 export default function TeacherDashboard({ session }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [sortOrder, setSortOrder] = useState('newest');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -76,7 +79,18 @@ export default function TeacherDashboard({ session }) {
   };
 
   const handleChangePassword = async () => {
-    const newPwd = await Dialog.prompt("Masukkan password baru Anda (minimal 6 karakter):", "Ganti Password");
+    const oldPwd = await Dialog.prompt("Masukkan password lama Anda:", "Verifikasi Password Lama", "", true);
+    if (!oldPwd) return;
+
+    // Verify old password by signing in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: session.user.email,
+      password: oldPwd
+    });
+
+    if (signInError) return Dialog.alert("Password lama salah!", "Gagal");
+
+    const newPwd = await Dialog.prompt("Masukkan password baru Anda (minimal 6 karakter):", "Ganti Password Baru", "", true);
     if (!newPwd) return;
     if (newPwd.length < 6) return Dialog.alert("Password minimal 6 karakter!", "Gagal");
 
@@ -94,6 +108,12 @@ export default function TeacherDashboard({ session }) {
             <p className="text-slate-500 font-bold mt-1">Kelola sesi kelas, pre-test, materi, dan kuis Anda.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <button 
+              onClick={() => navigate('/guide')} 
+              className="bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-transform transform hover:-translate-y-1"
+            >
+              <i className="fa-solid fa-circle-question text-xl"></i> Panduan
+            </button>
             <button 
               onClick={handleChangePassword} 
               className="bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-transform transform hover:-translate-y-1"
@@ -117,6 +137,40 @@ export default function TeacherDashboard({ session }) {
 
         {error && <div className="text-rose-500 font-bold p-4 bg-rose-50 rounded-xl mb-4">Error: {error}</div>}
 
+        <div className="flex flex-col md:flex-row gap-4 mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex-1 relative">
+            <i className="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input 
+              type="text" 
+              placeholder="Cari sesi atau PIN..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 focus:border-indigo-400 focus:bg-white outline-none transition-colors"
+            />
+          </div>
+          <div className="flex gap-2">
+            <select 
+              value={filterStatus} 
+              onChange={e => setFilterStatus(e.target.value)}
+              className="py-3 px-4 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 focus:border-indigo-400 outline-none cursor-pointer"
+            >
+              <option value="all">Semua Status</option>
+              <option value="live">Live</option>
+              <option value="closed">Closed</option>
+            </select>
+            <select 
+              value={sortOrder} 
+              onChange={e => setSortOrder(e.target.value)}
+              className="py-3 px-4 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 focus:border-indigo-400 outline-none cursor-pointer"
+            >
+              <option value="newest">Terbaru</option>
+              <option value="oldest">Terlama</option>
+              <option value="az">A-Z</option>
+              <option value="za">Z-A</option>
+            </select>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (
             <div className="col-span-full text-center p-10 text-slate-400 font-bold">
@@ -127,7 +181,17 @@ export default function TeacherDashboard({ session }) {
               <i className="fa-solid fa-box-open text-4xl mb-3 block"></i>Belum ada sesi kuis yang dibuat.
             </div>
           ) : (
-            sessions.map(s => {
+            sessions.filter(s => {
+              const matchSearch = s.title.toLowerCase().includes(searchQuery.toLowerCase()) || s.pin.toLowerCase().includes(searchQuery.toLowerCase());
+              const matchStatus = filterStatus === 'all' || s.status === filterStatus;
+              return matchSearch && matchStatus;
+            }).sort((a, b) => {
+              if (sortOrder === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+              if (sortOrder === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+              if (sortOrder === 'az') return a.title.localeCompare(b.title);
+              if (sortOrder === 'za') return b.title.localeCompare(a.title);
+              return 0;
+            }).map(s => {
               const isLive = s.status === 'live';
               return (
                 <div 

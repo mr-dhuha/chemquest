@@ -11,6 +11,7 @@ import Quiz from './pages/Quiz';
 import Arena from './pages/Arena';
 import QrViewer from './pages/QrViewer';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import Guide from './pages/Guide';
 import Modal from './components/Modal';
 import DialogManager from './components/DialogManager';
 import WaitingApproval from './pages/WaitingApproval';
@@ -82,6 +83,7 @@ function App() {
         <Route path="/quiz/:pin" element={<Quiz />} />
         <Route path="/arena/:pin" element={<Arena session={session} />} />
         <Route path="/qrcode/:pin" element={<QrViewer />} />
+        <Route path="/guide" element={<ProtectedRoute><Guide /></ProtectedRoute>} />
       </Routes>
       <Modal />
       <DialogManager />

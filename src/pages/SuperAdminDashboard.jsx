@@ -10,6 +10,8 @@ export default function SuperAdminDashboard({ session }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('accounts'); // accounts, sessions, banks, logs
+  const [logFilter, setLogFilter] = useState('');
+  const [logSortDesc, setLogSortDesc] = useState(true);
   const navigate = useNavigate();
   
   const ADMIN_EMAIL = 'mrdhuhaofficial@gmail.com';
@@ -89,6 +91,14 @@ export default function SuperAdminDashboard({ session }) {
     else Dialog.alert(error.message, "Gagal");
   };
 
+  const handleBlockAccount = async (id, email) => {
+    if (!await Dialog.confirm(`Blokir/bekukan akun ${email}? Guru tidak akan bisa login.`, "Blokir Akun")) return;
+    setLoading(true);
+    const { error } = await supabase.from('teachers').update({ is_approved: false }).eq('id', id);
+    if (!error) loadData();
+    else Dialog.alert(error.message, "Gagal");
+  };
+
   const handleDeleteAccount = async (id, email) => {
     if (!await Dialog.confirm(`Hapus akun ${email} permanen?`, "Hapus")) return;
     setLoading(true);
@@ -112,6 +122,29 @@ export default function SuperAdminDashboard({ session }) {
     const { error } = await supabase.rpc('admin_toggle_bank_access', { target_id: id, new_status: !currentAccess });
     if (!error) loadData();
     else Dialog.alert(error.message, "Gagal Toggle Akses");
+  };
+
+  const handleExportLogs = () => {
+    let csvContent = "data:text/csv;charset=utf-8,Waktu,Guru,Aktivitas,Detail\n";
+    const filteredLogs = logs.filter(l => 
+      getTeacherEmail(l.teacher_id).toLowerCase().includes(logFilter.toLowerCase()) || 
+      (l.action && l.action.toLowerCase().includes(logFilter.toLowerCase()))
+    ).sort((a, b) => logSortDesc ? new Date(b.created_at) - new Date(a.created_at) : new Date(a.created_at) - new Date(b.created_at));
+
+    filteredLogs.forEach(l => {
+      const email = getTeacherEmail(l.teacher_id);
+      const time = new Date(l.created_at).toLocaleString('id-ID').replace(/,/g, '');
+      const action = l.action ? l.action.replace(/,/g, '') : '';
+      const details = l.details ? l.details.replace(/,/g, '') : '';
+      csvContent += `${time},${email},${action},${details}\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "chemquest_activity_logs.csv");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   if (session?.user?.email !== ADMIN_EMAIL) return null;
@@ -148,16 +181,35 @@ export default function SuperAdminDashboard({ session }) {
         </div>
 
         <div className="bg-slate-800 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
-          <div className="p-6 border-b border-slate-700 flex justify-between items-center">
+          <div className="p-6 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h3 className="text-xl font-black text-white capitalize">Tab {activeTab.replace('-', ' ')}</h3>
-            <button onClick={loadData} className="text-slate-400 hover:text-white transition-colors">
-              <i className={`fa-solid fa-rotate-right ${loading ? 'fa-spin' : ''}`}></i> Segarkan
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {activeTab === 'logs' && (
+                <>
+                  <input 
+                    type="text" 
+                    placeholder="Cari email/aktivitas..." 
+                    value={logFilter}
+                    onChange={e => setLogFilter(e.target.value)}
+                    className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
+                  />
+                  <button onClick={() => setLogSortDesc(!logSortDesc)} className="text-slate-400 hover:text-white transition-colors text-sm font-bold bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5">
+                    <i className={`fa-solid fa-sort-${logSortDesc ? 'down' : 'up'}`}></i> Sort
+                  </button>
+                  <button onClick={handleExportLogs} className="text-emerald-400 hover:text-emerald-300 transition-colors text-sm font-bold bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-1.5">
+                    <i className="fa-solid fa-file-csv"></i> Export CSV
+                  </button>
+                </>
+              )}
+              <button onClick={loadData} className="text-slate-400 hover:text-white transition-colors text-sm font-bold bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5">
+                <i className={`fa-solid fa-rotate-right ${loading ? 'fa-spin' : ''}`}></i> Segarkan
+              </button>
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+            <table className="w-full text-left border-collapse relative">
               {/* HEADERS */}
-              <thead>
+              <thead className="sticky top-0 bg-slate-800 shadow-md z-10">
                 <tr className="bg-slate-900/50 text-slate-400 text-xs uppercase tracking-widest font-black">
                   {activeTab === 'accounts' && (
                     <>
@@ -214,9 +266,13 @@ export default function SuperAdminDashboard({ session }) {
                           </button>
                         </td>
                         <td className="p-4 text-right pr-6 flex justify-end gap-2">
-                          {!t.is_approved && <button onClick={() => handleApproveAccount(t.id, t.email)} className="w-8 h-8 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white"><i className="fa-solid fa-check"></i></button>}
-                          <button onClick={() => handleResetPassword(t.id, t.email)} className="w-8 h-8 rounded bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white"><i className="fa-solid fa-key"></i></button>
-                          {t.role !== 'admin' && <button onClick={() => handleDeleteAccount(t.id, t.email)} className="w-8 h-8 rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white"><i className="fa-solid fa-trash"></i></button>}
+                          {!t.is_approved ? (
+                            <button onClick={() => handleApproveAccount(t.id, t.email)} className="w-8 h-8 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white" title="Buka Blokir / Setujui"><i className="fa-solid fa-check"></i></button>
+                          ) : (
+                            t.email !== ADMIN_EMAIL && <button onClick={() => handleBlockAccount(t.id, t.email)} className="w-8 h-8 rounded bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white" title="Blokir / Bekukan Akun"><i className="fa-solid fa-ban"></i></button>
+                          )}
+                          <button onClick={() => handleResetPassword(t.id, t.email)} className="w-8 h-8 rounded bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white" title="Reset Password"><i className="fa-solid fa-key"></i></button>
+                          {t.role !== 'admin' && <button onClick={() => handleDeleteAccount(t.id, t.email)} className="w-8 h-8 rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white" title="Hapus Permanen"><i className="fa-solid fa-trash"></i></button>}
                         </td>
                       </tr>
                     ))}
@@ -243,7 +299,10 @@ export default function SuperAdminDashboard({ session }) {
                     ))}
 
                     {/* LOGS */}
-                    {activeTab === 'logs' && logs.map(l => (
+                    {activeTab === 'logs' && logs.filter(l => 
+                      getTeacherEmail(l.teacher_id).toLowerCase().includes(logFilter.toLowerCase()) || 
+                      (l.action && l.action.toLowerCase().includes(logFilter.toLowerCase()))
+                    ).sort((a, b) => logSortDesc ? new Date(b.created_at) - new Date(a.created_at) : new Date(a.created_at) - new Date(b.created_at)).map(l => (
                       <tr key={l.id} className="border-b border-slate-700 hover:bg-slate-700/30">
                         <td className="p-4 pl-6 text-xs text-slate-400 whitespace-nowrap">{new Date(l.created_at).toLocaleString('id-ID')}</td>
                         <td className="p-4 text-indigo-300 font-bold">{getTeacherEmail(l.teacher_id)}</td>

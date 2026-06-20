@@ -6,6 +6,7 @@ import { Dialog } from '../components/DialogManager';
 export default function TeacherAuth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -15,11 +16,12 @@ export default function TeacherAuth() {
     if (!email || !password) return setError("Isi email & sandi");
 
     setLoading(true);
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) {
       setError(err.message);
       setLoading(false);
     } else {
+      await supabase.from('activity_logs').insert({ teacher_id: data.user.id, action: 'Login ke dashboard', details: 'Aktivitas masuk sesi baru.' });
       navigate('/dashboard');
     }
   };
@@ -71,13 +73,23 @@ export default function TeacherAuth() {
             className="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors"
             placeholder="Email Terdaftar"
           />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors"
-            placeholder="Kata Sandi"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors pr-12"
+              placeholder="Kata Sandi"
+            />
+            <button 
+              type="button" 
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center transition-colors"
+              tabIndex="-1"
+            >
+              <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+            </button>
+          </div>
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
               onClick={handleLogin}

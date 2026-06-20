@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
@@ -7,6 +7,7 @@ import { Dialog } from '../components/DialogManager';
 import ImportQuestionModal from '../components/ImportQuestionModal';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import * as XLSX from 'xlsx';
 
 export default function SessionManager({ session, profile }) {
   const { id } = useParams();
@@ -42,6 +43,7 @@ export default function SessionManager({ session, profile }) {
   });
 
   const [showImportModal, setShowImportModal] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: 'score', direction: 'desc' });
 
   useEffect(() => {
     loadSession();
@@ -49,7 +51,7 @@ export default function SessionManager({ session, profile }) {
 
   useEffect(() => {
     if (activeSession) {
-      if (activeTab === 'soal') loadQuestions();
+      loadQuestions();
       if (activeTab === 'siswa') loadPlayers();
     }
     
@@ -222,6 +224,103 @@ export default function SessionManager({ session, profile }) {
       await supabase.from('players').delete().eq('id', pId);
       loadPlayers();
     }
+  };
+
+  const stats = useMemo(() => {
+    if (!players || players.length === 0) return null;
+    
+    const scores = players.map(p => p.score);
+    const avgScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+    const maxScore = Math.max(...scores);
+    const minScore = Math.min(...scores);
+    
+    const maxScorePossible = Math.max(10, questions.filter(q => q.category !== 'MATERI').length * 10);
+    
+    let lanjut = 0, ulang = 0, remedial = 0;
+    players.forEach(p => {
+      let pct = (p.score / maxScorePossible) * 100;
+      if (pct >= 80) lanjut++;
+      else if (pct >= 50) ulang++;
+      else remedial++;
+    });
+
+    const total = players.length;
+    
+    const questionStats = [];
+    questions.filter(q => q.category !== 'MATERI').forEach(q => {
+      let correct = 0;
+      players.forEach(p => {
+         if (p.categoryScores?.answers?.[q.id] === q.answer) correct++;
+      });
+      questionStats.push({ id: q.id, text: q.q, correctRate: Math.round((correct / total) * 100) });
+    });
+    
+    questionStats.sort((a, b) => b.correctRate - a.correctRate);
+    const termudah = questionStats.length > 0 ? questionStats[0] : null;
+    const tersulit = questionStats.length > 0 ? questionStats[questionStats.length - 1] : null;
+
+    return { 
+      avgScore, maxScore, minScore, 
+      pctLanjut: Math.round((lanjut/total)*100), 
+      pctUlang: Math.round((ulang/total)*100), 
+      pctRemedial: Math.round((remedial/total)*100),
+      termudah, tersulit, questionStats
+    };
+  }, [players, questions]);
+
+  const sortedPlayers = useMemo(() => {
+    const sorted = [...players];
+    sorted.sort((a, b) => {
+      if (sortConfig.key === 'name') {
+        return sortConfig.direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      } else {
+        return sortConfig.direction === 'asc' ? a.score - b.score : b.score - a.score;
+      }
+    });
+    return sorted;
+  }, [players, sortConfig]);
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
+  const exportToExcel = () => {
+    if (players.length === 0) {
+      Dialog.alert("Belum ada data siswa untuk diekspor!");
+      return;
+    }
+
+    const maxScorePossible = Math.max(10, questions.filter(q => q.category !== 'MATERI').length * 10);
+    
+    const exportData = sortedPlayers.map((p, i) => {
+      let pct = (p.score / maxScorePossible) * 100;
+      let status = pct >= 80 ? 'Level Lanjut' : pct >= 50 ? 'Ulang Materi' : 'Remedial';
+      
+      const row = {
+        'No': i + 1,
+        'Nama Siswa': p.name,
+        'Skor': p.score,
+        'Status': status,
+        'Refleksi': p.refleksi || 'Belum mengisi',
+        'Waktu Bergabung': new Date(p.joined_at).toLocaleString('id-ID')
+      };
+
+      questions.filter(q => q.category !== 'MATERI').forEach((q, idx) => {
+        const studentAns = p.categoryScores?.answers?.[q.id];
+        const isCorrect = studentAns === q.answer;
+        row[`Soal ${idx+1}`] = studentAns ? (isCorrect ? 'Benar' : 'Salah') : 'Kosong';
+      });
+
+      return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Analisis Siswa");
+    XLSX.writeFile(workbook, `Analisis_Siswa_${activeSession?.title || 'ChemQuest'}.xlsx`);
   };
 
   if (!activeSession) return <div className="p-8">Memuat...</div>;
@@ -465,45 +564,129 @@ export default function SessionManager({ session, profile }) {
 
         {/* Siswa Tab */}
         {activeTab === 'siswa' && (
-          <div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {players.length === 0 ? (
-                <div className="col-span-full p-10 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed border-slate-200">Lintasan masih kosong. Menunggu siswa...</div>
-              ) : (
-                players.map((p, index) => {
-                  let maxScoreForPct = Math.max(10, questions.length * 10);
-                  let pct = (p.score / maxScoreForPct) * 100;
-                  
-                  let badgeUI;
-                  if(pct >= 80) badgeUI = <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-wider"><i className="fa-solid fa-arrow-trend-up"></i> Level Lanjut</span>;
-                  else if(pct >= 50) badgeUI = <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-wider"><i className="fa-solid fa-arrows-spin"></i> Ulang Materi</span>;
-                  else badgeUI = <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-wider"><i className="fa-solid fa-arrow-trend-down"></i> Remedial</span>;
-
-                  return (
-                    <div key={p.id} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 bg-slate-100 text-slate-400 font-black px-4 py-2 rounded-bl-2xl text-xl opacity-50">#{index+1}</div>
-                      <div className="flex items-center gap-4 mb-4 border-b border-slate-100 pb-4">
-                        <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${p.avatar}`} className="w-16 h-16 rounded-full border-2 border-slate-200 bg-slate-100 shadow-sm" alt="avatar" />
-                        <div>
-                          <h3 className="font-black text-xl text-slate-800 leading-tight">{p.name}</h3>
-                          <div className="mt-1 flex gap-2 text-sm font-bold items-center flex-wrap">
-                            <span className="text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">{p.score} pt</span>
-                            {badgeUI}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4 min-h-[80px]">
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1"><i className="fa-solid fa-comment-dots"></i> Refleksi Siswa</p>
-                        <p className="text-sm text-slate-600 font-medium italic">
-                          {p.refleksi ? `"${p.refleksi}"` : "Belum memberikan refleksi."}
-                        </p>
-                      </div>
-                      <button onClick={() => kickPlayer(p.id)} className="w-full text-sm text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white py-2 rounded-xl font-bold transition-colors">Diskualifikasi</button>
-                    </div>
-                  );
-                })
-              )}
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h3 className="text-2xl font-black text-slate-800">Ringkasan Analisis Kelas</h3>
+              <button onClick={exportToExcel} className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-6 py-3 rounded-xl font-black border border-emerald-200 transition-colors flex items-center gap-2">
+                <i className="fa-solid fa-file-excel"></i> Export Laporan (XLSX)
+              </button>
             </div>
+
+            {players.length === 0 ? (
+              <div className="col-span-full p-10 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed border-slate-200">Lintasan masih kosong. Menunggu siswa...</div>
+            ) : (
+              <>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Rata-rata Kelas</p>
+                    <p className="text-3xl font-black text-teal-600">{stats.avgScore} <span className="text-sm font-bold text-slate-400">pt</span></p>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Nilai Tertinggi</p>
+                    <p className="text-3xl font-black text-emerald-600">{stats.maxScore} <span className="text-sm font-bold text-slate-400">pt</span></p>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Nilai Terendah</p>
+                    <p className="text-3xl font-black text-rose-500">{stats.minScore} <span className="text-sm font-bold text-slate-400">pt</span></p>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Distribusi Kemampuan</p>
+                    <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
+                      <div style={{ width: `${stats.pctLanjut}%` }} className="bg-emerald-400 h-full" title={`Lanjut: ${stats.pctLanjut}%`}></div>
+                      <div style={{ width: `${stats.pctUlang}%` }} className="bg-amber-400 h-full" title={`Ulang: ${stats.pctUlang}%`}></div>
+                      <div style={{ width: `${stats.pctRemedial}%` }} className="bg-rose-400 h-full" title={`Remedial: ${stats.pctRemedial}%`}></div>
+                    </div>
+                    <div className="flex justify-between text-[10px] font-bold mt-2">
+                      <span className="text-emerald-600">Lanjut: {stats.pctLanjut}%</span>
+                      <span className="text-amber-600">Ulang: {stats.pctUlang}%</span>
+                      <span className="text-rose-600">Rem: {stats.pctRemedial}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Analisis Soal */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
+                    <p className="text-xs font-black uppercase tracking-widest text-emerald-600 mb-1"><i className="fa-solid fa-arrow-up"></i> Soal Paling Banyak Benar</p>
+                    {stats.termudah ? (
+                      <div>
+                        <p className="font-bold text-slate-700 truncate mb-2">{stats.termudah.text}</p>
+                        <p className="text-sm font-black text-emerald-700">{stats.termudah.correctRate}% Menjawab Benar</p>
+                      </div>
+                    ) : <p className="text-sm font-bold text-slate-400">Belum ada data.</p>}
+                  </div>
+                  <div className="bg-rose-50 p-5 rounded-2xl border border-rose-100">
+                    <p className="text-xs font-black uppercase tracking-widest text-rose-600 mb-1"><i className="fa-solid fa-arrow-down"></i> Soal Paling Banyak Salah</p>
+                    {stats.tersulit ? (
+                      <div>
+                        <p className="font-bold text-slate-700 truncate mb-2">{stats.tersulit.text}</p>
+                        <p className="text-sm font-black text-rose-700">{100 - stats.tersulit.correctRate}% Menjawab Salah</p>
+                      </div>
+                    ) : <p className="text-sm font-bold text-slate-400">Belum ada data.</p>}
+                  </div>
+                </div>
+
+                {/* Students Data Table */}
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                          <th className="p-4 font-black text-xs uppercase tracking-wider text-slate-500 w-16 text-center">No</th>
+                          <th className="p-4 font-black text-xs uppercase tracking-wider text-slate-500 cursor-pointer hover:text-teal-600 transition-colors" onClick={() => handleSort('name')}>
+                            Nama Siswa {sortConfig.key === 'name' && <i className={`fa-solid fa-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'} ml-1`}></i>}
+                          </th>
+                          <th className="p-4 font-black text-xs uppercase tracking-wider text-slate-500 cursor-pointer hover:text-teal-600 transition-colors" onClick={() => handleSort('score')}>
+                            Skor Misi {sortConfig.key === 'score' && <i className={`fa-solid fa-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'} ml-1`}></i>}
+                          </th>
+                          <th className="p-4 font-black text-xs uppercase tracking-wider text-slate-500">Status</th>
+                          <th className="p-4 font-black text-xs uppercase tracking-wider text-slate-500 min-w-[200px]">Refleksi</th>
+                          <th className="p-4 font-black text-xs uppercase tracking-wider text-slate-500 text-center">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {sortedPlayers.map((p, index) => {
+                          let maxScorePossible = Math.max(10, questions.filter(q => q.category !== 'MATERI').length * 10);
+                          let pct = (p.score / maxScorePossible) * 100;
+                          
+                          let badgeUI;
+                          if(pct >= 80) badgeUI = <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider"><i className="fa-solid fa-arrow-trend-up"></i> Level Lanjut</span>;
+                          else if(pct >= 50) badgeUI = <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider"><i className="fa-solid fa-arrows-spin"></i> Ulang Materi</span>;
+                          else badgeUI = <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider"><i className="fa-solid fa-arrow-trend-down"></i> Remedial</span>;
+
+                          return (
+                            <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="p-4 text-center font-bold text-slate-400">{index + 1}</td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${p.avatar}`} className="w-10 h-10 rounded-full border-2 border-slate-200 bg-slate-100" alt="avatar" />
+                                  <span className="font-black text-slate-800">{p.name}</span>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <span className="text-teal-600 bg-teal-50 px-3 py-1 rounded-lg border border-teal-100 font-black">{p.score} pt</span>
+                              </td>
+                              <td className="p-4">{badgeUI}</td>
+                              <td className="p-4">
+                                <p className="text-xs text-slate-600 font-medium italic line-clamp-2" title={p.refleksi}>
+                                  {p.refleksi ? `"${p.refleksi}"` : <span className="text-slate-400">Belum mengisi</span>}
+                                </p>
+                              </td>
+                              <td className="p-4 text-center">
+                                <button onClick={() => kickPlayer(p.id)} className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors flex items-center justify-center mx-auto" title="Diskualifikasi">
+                                  <i className="fa-solid fa-trash text-xs"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

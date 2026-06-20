@@ -14,6 +14,8 @@ export default function ImportQuestionModal({ isOpen, onClose, targetSessionId, 
   const [selectedQIds, setSelectedQIds] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [isLegacy, setIsLegacy] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       loadSources();
@@ -35,17 +37,25 @@ export default function ImportQuestionModal({ isOpen, onClose, targetSessionId, 
   const loadSources = async () => {
     setLoading(true);
     if (source === 'bank') {
-      let query = supabase.from('question_banks').select('category');
-      if (profile && !profile.can_access_all_banks) {
-        query = query.eq('teacher_id', (await supabase.auth.getUser()).data.user?.id);
-      }
-      const { data, error } = await query;
-      if (error) {
+      const user = (await supabase.auth.getUser()).data.user;
+      const { data, error } = await supabase.from('bank_categories').select('*, teachers(email)');
+      
+      if (error && error.code === '42P01') {
+        setIsLegacy(true);
+        const { data: oldData } = await supabase.from('question_banks').select('category, teacher_id');
+        if (oldData) {
+          const uniqueCats = [...new Set(oldData.map(d => d.category))];
+          setBankCategories(uniqueCats.map(cat => ({ id: cat, name: cat, teachers: { email: 'Legacy' } })));
+        }
+      } else if (data && !error) {
+        let filtered = data;
+        if (profile && !profile.can_access_all_banks) {
+          filtered = data.filter(c => c.teacher_id === user?.id || c.visibility === 'public' || c.visibility === 'collaborative');
+        }
+        setBankCategories(filtered.sort((a,b) => a.name.localeCompare(b.name)));
+      } else if (error) {
         console.error("Bank load error:", error);
         alert("Gagal memuat bank: " + error.message);
-      }
-      if (data) {
-        setBankCategories([...new Set(data.map(d => d.category))].sort());
       }
     } else {
       const { data, error } = await supabase.from('sessions').select('id, title, pin').neq('id', targetSessionId).order('created_at', { ascending: false });
@@ -70,10 +80,11 @@ export default function ImportQuestionModal({ isOpen, onClose, targetSessionId, 
 
   const loadBankQuestions = async () => {
     setLoading(true);
-    // Don't filter bank questions by type. Show all in the folder so teacher can choose.
-    let query = supabase.from('question_banks').select('*').eq('category', selectedBankCategory);
-    if (profile && !profile.can_access_all_banks) {
-      query = query.eq('teacher_id', (await supabase.auth.getUser()).data.user?.id);
+    let query = supabase.from('question_banks').select('*');
+    if (isLegacy) {
+      query = query.eq('category', selectedBankCategory);
+    } else {
+      query = query.eq('bank_category_id', selectedBankCategory);
     }
     const { data, error } = await query;
     if (error) alert("Gagal memuat soal bank: " + error.message);
@@ -195,11 +206,11 @@ export default function ImportQuestionModal({ isOpen, onClose, targetSessionId, 
                   {bankCategories.length === 0 ? <p className="text-sm italic text-slate-400">Tidak ada kategori di Bank Soal.</p> : null}
                   {bankCategories.map(cat => (
                     <button 
-                      key={cat} 
-                      onClick={() => setSelectedBankCategory(cat)}
-                      className={`w-full text-left p-3 rounded-xl border text-sm font-bold transition-colors ${selectedBankCategory === cat ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-100'}`}
+                      key={cat.id} 
+                      onClick={() => setSelectedBankCategory(cat.id)}
+                      className={`w-full text-left p-3 rounded-xl border text-sm font-bold transition-colors ${selectedBankCategory === cat.id ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-100'}`}
                     >
-                      <i className="fa-regular fa-folder mr-2"></i> {cat}
+                      <i className="fa-regular fa-folder mr-2"></i> {cat.name} {cat.teachers?.email ? `(${cat.teachers.email})` : ''}
                     </button>
                   ))}
                 </div>

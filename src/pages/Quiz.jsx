@@ -215,6 +215,11 @@ export default function Quiz() {
 
       const newScore = player.score + scoreChange;
       const catScores = { ...player.categoryScores };
+      
+      const answers = catScores.answers || {};
+      answers[currentQ.id] = selectedOpt;
+      catScores.answers = answers;
+
       if (isCorrect) catScores[currentQ.category] = (catScores[currentQ.category] || 0) + 10;
       
       const nextIndex = currentIndex + 1;
