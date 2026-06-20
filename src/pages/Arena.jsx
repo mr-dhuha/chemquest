@@ -153,49 +153,49 @@ export default function Arena({ session: teacherSession }) {
               <i className="fa-solid fa-trophy text-amber-400 ml-4"></i>
             </h2>
             
-            <div className="flex flex-col sm:flex-row items-end justify-center gap-4 sm:gap-6 h-96">
+            <div className="flex flex-row items-end justify-center gap-2 sm:gap-6 h-64 sm:h-96 w-full px-2">
               {/* JUARA 2 */}
               {players[1] ? (
-                <div className="flex flex-col items-center justify-end w-40 order-2 sm:order-1 animate-[slideUpFade_0.5s_ease-out_forwards]">
-                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${players[1].avatar}`} className="w-16 h-16 rounded-full border-2 border-slate-300 bg-slate-100 mb-2 drop-shadow-lg" alt="avatar" />
-                  <div className="bg-slate-800 text-white px-4 py-2 rounded-t-xl text-center w-full shadow-xl">
-                    <p className="font-black text-sm truncate">{players[1].name}</p>
-                    <p className="text-teal-400 font-black">{players[1].score} pt</p>
+                <div className="flex flex-col items-center justify-end w-[30%] sm:w-40 order-1 animate-[slideUpFade_0.5s_ease-out_forwards]">
+                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${players[1].avatar}`} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-slate-300 bg-slate-100 mb-2 drop-shadow-lg" alt="avatar" />
+                  <div className="bg-slate-800 text-white px-2 sm:px-4 py-2 rounded-t-xl text-center w-full shadow-xl">
+                    <p className="font-black text-[10px] sm:text-sm truncate">{players[1].name}</p>
+                    <p className="text-teal-400 font-black text-xs sm:text-base">{players[1].score} pt</p>
                   </div>
-                  <div className="w-full bg-gradient-to-t from-slate-400 to-slate-300 h-32 rounded-t-lg border-2 border-b-0 border-slate-300 flex items-center justify-center shadow-inner">
-                    <span className="text-5xl font-black text-slate-100 opacity-80">2</span>
+                  <div className="w-full bg-gradient-to-t from-slate-400 to-slate-300 h-24 sm:h-32 rounded-t-lg border-2 border-b-0 border-slate-300 flex items-center justify-center shadow-inner">
+                    <span className="text-3xl sm:text-5xl font-black text-slate-100 opacity-80">2</span>
                   </div>
                 </div>
-              ) : <div className="w-40 order-2 sm:order-1 h-32 bg-slate-800/50 rounded-t-lg border-2 border-b-0 border-slate-700"></div>}
+              ) : <div className="w-[30%] sm:w-40 order-1 h-24 sm:h-32 bg-slate-800/50 rounded-t-lg border-2 border-b-0 border-slate-700"></div>}
 
               {/* JUARA 1 */}
               {players[0] ? (
-                <div className="flex flex-col items-center justify-end w-48 order-1 sm:order-2 z-10 animate-[slideUpFade_0.7s_ease-out_forwards]">
-                  <i className="fa-solid fa-crown text-amber-400 text-4xl mb-1 drop-shadow-md animate-bounce"></i>
-                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${players[0].avatar}`} className="w-20 h-20 rounded-full border-4 border-amber-300 bg-slate-100 mb-2 drop-shadow-xl" alt="avatar" />
-                  <div className="bg-slate-800 text-white px-4 py-3 rounded-t-xl text-center w-full shadow-2xl border-2 border-b-0 border-amber-400/30">
-                    <p className="font-black text-lg truncate text-amber-300">{players[0].name}</p>
-                    <p className="text-teal-400 font-black">{players[0].score} pt</p>
+                <div className="flex flex-col items-center justify-end w-[40%] sm:w-48 order-2 z-10 animate-[slideUpFade_0.7s_ease-out_forwards]">
+                  <i className="fa-solid fa-crown text-amber-400 text-3xl sm:text-4xl mb-1 drop-shadow-md animate-bounce"></i>
+                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${players[0].avatar}`} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-amber-300 bg-slate-100 mb-2 drop-shadow-xl" alt="avatar" />
+                  <div className="bg-slate-800 text-white px-2 sm:px-4 py-3 rounded-t-xl text-center w-full shadow-2xl border-2 border-b-0 border-amber-400/30">
+                    <p className="font-black text-xs sm:text-lg truncate text-amber-300">{players[0].name}</p>
+                    <p className="text-teal-400 font-black text-xs sm:text-base">{players[0].score} pt</p>
                   </div>
-                  <div className="w-full bg-gradient-to-t from-amber-400 to-amber-300 h-48 rounded-t-lg border-2 border-b-0 border-amber-200 flex items-start pt-4 justify-center shadow-[0_-10px_30px_rgba(251,191,36,0.3)]">
-                    <span className="text-7xl font-black text-amber-100 opacity-80">1</span>
+                  <div className="w-full bg-gradient-to-t from-amber-400 to-amber-300 h-32 sm:h-48 rounded-t-lg border-2 border-b-0 border-amber-200 flex items-start pt-2 sm:pt-4 justify-center shadow-[0_-10px_30px_rgba(251,191,36,0.3)]">
+                    <span className="text-5xl sm:text-7xl font-black text-amber-100 opacity-80">1</span>
                   </div>
                 </div>
-              ) : <div className="w-48 order-1 sm:order-2 h-48 bg-slate-800/50 rounded-t-lg border-2 border-b-0 border-slate-700"></div>}
+              ) : <div className="w-[40%] sm:w-48 order-2 h-32 sm:h-48 bg-slate-800/50 rounded-t-lg border-2 border-b-0 border-slate-700"></div>}
 
               {/* JUARA 3 */}
               {players[2] ? (
-                <div className="flex flex-col items-center justify-end w-40 order-3 animate-[slideUpFade_0.9s_ease-out_forwards]">
-                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${players[2].avatar}`} className="w-14 h-14 rounded-full border-2 border-orange-300 bg-slate-100 mb-2 drop-shadow-md" alt="avatar" />
-                  <div className="bg-slate-800 text-white px-4 py-2 rounded-t-xl text-center w-full shadow-lg">
-                    <p className="font-black text-sm truncate">{players[2].name}</p>
-                    <p className="text-teal-400 font-black">{players[2].score} pt</p>
+                <div className="flex flex-col items-center justify-end w-[30%] sm:w-40 order-3 animate-[slideUpFade_0.9s_ease-out_forwards]">
+                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${players[2].avatar}`} className="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-2 border-orange-300 bg-slate-100 mb-2 drop-shadow-md" alt="avatar" />
+                  <div className="bg-slate-800 text-white px-2 sm:px-4 py-2 rounded-t-xl text-center w-full shadow-lg">
+                    <p className="font-black text-[10px] sm:text-sm truncate">{players[2].name}</p>
+                    <p className="text-teal-400 font-black text-xs sm:text-base">{players[2].score} pt</p>
                   </div>
-                  <div className="w-full bg-gradient-to-t from-orange-400 to-orange-300 h-24 rounded-t-lg border-2 border-b-0 border-orange-300 flex items-center justify-center shadow-inner">
-                    <span className="text-4xl font-black text-orange-100 opacity-80">3</span>
+                  <div className="w-full bg-gradient-to-t from-orange-400 to-orange-300 h-16 sm:h-24 rounded-t-lg border-2 border-b-0 border-orange-300 flex items-center justify-center shadow-inner">
+                    <span className="text-2xl sm:text-4xl font-black text-orange-100 opacity-80">3</span>
                   </div>
                 </div>
-              ) : <div className="w-40 order-3 h-24 bg-slate-800/50 rounded-t-lg border-2 border-b-0 border-slate-700"></div>}
+              ) : <div className="w-[30%] sm:w-40 order-3 h-16 sm:h-24 bg-slate-800/50 rounded-t-lg border-2 border-b-0 border-slate-700"></div>}
             </div>
             
             {/* OTHER PLAYERS */}

@@ -140,17 +140,101 @@ export default function Landing() {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-16 items-center relative z-10 w-full max-w-7xl">
           
-          {/* Left: Phone Mockup */}
-          <div className="flex justify-center lg:justify-end h-full">
-            <div className="w-64 h-[500px] border-[12px] border-slate-800 rounded-[3rem] relative shadow-2xl overflow-hidden bg-slate-50 flex-shrink-0 animate-[float_4s_ease-in-out_infinite] self-center">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-slate-800 rounded-b-xl z-10"></div>
-              <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-indigo-100 to-emerald-50">
-                <div className="w-32 h-32 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center relative overflow-hidden mb-8">
-                  <i className="fa-solid fa-qrcode text-6xl text-slate-800 relative z-10"></i>
-                  <div className="absolute top-0 left-0 w-full h-1 bg-emerald-400 animate-[scan_2s_linear_infinite] shadow-[0_0_8px_rgba(52,211,153,0.8)] z-20"></div>
+          {/* Left: Modern Login Card */}
+          <div className="flex justify-center lg:justify-end h-full w-full">
+            <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl border border-white/50 w-full max-w-md relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-emerald-400"></div>
+              
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-black text-slate-800">Masuk Kelas</h3>
+                <p className="text-slate-500 font-medium text-sm mt-1">Buat karakter unikmu dan bergabung ke arena</p>
+              </div>
+              
+              <div className="space-y-5">
+                {/* Avatar Selector */}
+                <div className="flex flex-col items-center mb-6">
+                  <div className="relative group">
+                    <div className="w-28 h-28 bg-slate-100 rounded-full overflow-hidden border-4 border-white shadow-lg flex items-center justify-center relative z-10">
+                      <img 
+                        src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${avatarSeed}`} 
+                        alt="Avatar RPG" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    
+                    <button 
+                      onClick={prevAvatar}
+                      className="absolute top-1/2 -left-4 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 rounded-full flex items-center justify-center shadow-md transition-all hover:scale-110 z-20"
+                      title="Avatar Sebelumnya"
+                    >
+                      <i className="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+
+                    <button 
+                      onClick={nextAvatar}
+                      className="absolute top-1/2 -right-4 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 rounded-full flex items-center justify-center shadow-md transition-all hover:scale-110 z-20"
+                      title="Avatar Selanjutnya"
+                    >
+                      <i className="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+
+                    <button 
+                      onClick={randomizeAvatar}
+                      className="absolute -bottom-2 right-0 left-0 mx-auto w-10 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 z-20"
+                      title="Acak Avatar"
+                    >
+                      <i className="fa-solid fa-dice text-lg"></i>
+                    </button>
+                  </div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-4">Karakter Penjelajahmu</p>
                 </div>
-                <div className="inline-block bg-emerald-100 text-emerald-700 text-xs font-black uppercase px-3 py-1 rounded mb-2 tracking-widest text-center">Dukungan HP</div>
-                <div className="text-[12px] font-black text-center text-indigo-900 uppercase tracking-widest leading-tight">Cukup Scan QR<br/>Kamera HP</div>
+
+                {error && (
+                  <div className="bg-rose-50 text-rose-500 text-sm font-bold p-3 rounded-xl border border-rose-100 text-center animate-[shake_0.5s]">
+                    <i className="fa-solid fa-circle-exclamation mr-1"></i> {error}
+                  </div>
+                )}
+
+                <div>
+                  <input 
+                    type="text" 
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    className="w-full p-4 border-2 border-slate-200 bg-white rounded-xl focus:border-blue-500 outline-none text-center text-2xl font-black uppercase tracking-[0.3em] text-slate-700 placeholder:text-slate-300 transition-colors shadow-sm" 
+                    placeholder="PIN KELAS" 
+                    maxLength="6" 
+                  />
+                </div>
+                
+                <div>
+                  <input 
+                    type="text" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full p-4 border-2 border-slate-200 bg-white rounded-xl focus:border-blue-500 outline-none font-bold text-center placeholder:text-slate-400 transition-colors shadow-sm" 
+                    placeholder="Nama Panggilan" 
+                    maxLength="15"
+                  />
+                </div>
+                
+                <div className="pt-4">
+                  <button 
+                    onClick={() => handleJoin('student')} 
+                    disabled={loading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-lg py-4 rounded-xl transition-all shadow-lg shadow-blue-500/30 transform hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
+                  >
+                    {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-play"></i>} 
+                    MULAI PETUALANGAN
+                  </button>
+                  
+                  <button 
+                    onClick={() => handleJoin('spectator')} 
+                    disabled={loading}
+                    className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-sm py-3 rounded-xl transition-all mt-3 border border-slate-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <i className="fa-solid fa-desktop"></i> TONTON ARENA LIVE
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -186,102 +270,18 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Right: Modern Login Card */}
-          <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl border border-white/50 w-full max-w-md mx-auto relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-emerald-400"></div>
-            
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-black text-slate-800">Masuk Kelas</h3>
-              <p className="text-slate-500 font-medium text-sm mt-1">Buat karakter unikmu dan bergabung ke arena</p>
-            </div>
-            
-            <div className="space-y-5">
-              {/* Avatar Selector */}
-              <div className="flex flex-col items-center mb-6">
-                <div className="relative group">
-                  <div className="w-28 h-28 bg-slate-100 rounded-full overflow-hidden border-4 border-white shadow-lg flex items-center justify-center relative z-10">
-                    <img 
-                      src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${avatarSeed}`} 
-                      alt="Avatar RPG" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  
-                  <button 
-                    onClick={prevAvatar}
-                    className="absolute top-1/2 -left-4 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 rounded-full flex items-center justify-center shadow-md transition-all hover:scale-110 z-20"
-                    title="Avatar Sebelumnya"
-                  >
-                    <i className="fa-solid fa-chevron-left text-xs"></i>
-                  </button>
-
-                  <button 
-                    onClick={nextAvatar}
-                    className="absolute top-1/2 -right-4 -translate-y-1/2 w-8 h-8 bg-white border border-slate-200 text-slate-500 hover:text-blue-600 rounded-full flex items-center justify-center shadow-md transition-all hover:scale-110 z-20"
-                    title="Avatar Selanjutnya"
-                  >
-                    <i className="fa-solid fa-chevron-right text-xs"></i>
-                  </button>
-
-                  <button 
-                    onClick={randomizeAvatar}
-                    className="absolute -bottom-2 right-0 left-0 mx-auto w-10 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 z-20"
-                    title="Acak Avatar"
-                  >
-                    <i className="fa-solid fa-dice text-lg"></i>
-                  </button>
+          {/* Right: Phone Mockup */}
+          <div className="flex justify-center lg:justify-start h-full">
+            <div className="w-64 h-[500px] border-[12px] border-slate-800 rounded-[3rem] relative shadow-2xl overflow-hidden bg-slate-50 flex-shrink-0 animate-[float_4s_ease-in-out_infinite] self-center hidden lg:flex">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-slate-800 rounded-b-xl z-10"></div>
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-indigo-100 to-emerald-50">
+                <div className="w-32 h-32 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center relative overflow-hidden mb-8">
+                  <i className="fa-solid fa-qrcode text-6xl text-slate-800 relative z-10"></i>
+                  <div className="absolute top-0 left-0 w-full h-1 bg-emerald-400 animate-[scan_2s_linear_infinite] shadow-[0_0_8px_rgba(52,211,153,0.8)] z-20"></div>
                 </div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-4">Karakter Penjelajahmu</p>
+                <div className="inline-block bg-emerald-100 text-emerald-700 text-xs font-black uppercase px-3 py-1 rounded mb-2 tracking-widest text-center">Dukungan HP</div>
+                <div className="text-[12px] font-black text-center text-indigo-900 uppercase tracking-widest leading-tight">Cukup Scan QR<br/>Kamera HP</div>
               </div>
-
-              <div>
-                <input 
-                  type="text" 
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className="w-full p-4 border-2 border-slate-200 bg-white rounded-xl focus:border-blue-500 outline-none text-center text-2xl font-black uppercase tracking-[0.3em] text-slate-700 placeholder:text-slate-300 transition-colors shadow-sm" 
-                  placeholder="PIN KELAS" 
-                  maxLength="6" 
-                />
-              </div>
-              
-              <div>
-                <input 
-                  type="text" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full p-4 border-2 border-slate-200 bg-white rounded-xl focus:border-blue-500 outline-none font-bold text-center placeholder:text-slate-400 transition-colors shadow-sm" 
-                  placeholder="Nama Panggilan" 
-                  maxLength="15"
-                />
-              </div>
-              
-              <div className="pt-4">
-                <button 
-                  onClick={() => handleJoin('student')} 
-                  disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-lg py-4 rounded-xl transition-all shadow-lg shadow-blue-500/30 transform hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
-                >
-                  {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-play"></i>} 
-                  MULAI PETUALANGAN
-                </button>
-                
-                <button 
-                  onClick={() => handleJoin('spectator')} 
-                  disabled={loading}
-                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-sm py-3 rounded-xl transition-all mt-3 border border-slate-200 disabled:opacity-50"
-                >
-                  <i className="fa-solid fa-tv"></i> Masuk Mode Penonton (Arena)
-                </button>
-              </div>
-
-              {error && (
-                <div className="mt-2 p-3 bg-rose-50 border border-rose-100 rounded-xl animate-shake">
-                  <p className="text-rose-500 text-xs font-bold text-center flex items-center justify-center gap-1">
-                    <i className="fa-solid fa-triangle-exclamation"></i> {error}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </div>
