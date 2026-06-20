@@ -103,9 +103,21 @@ export default function Quiz() {
     const { data: qData } = await supabase.from('questions').select('*').eq('session_id', sId).order('created_at', { ascending: true });
     const allQs = qData || [];
     
-    setPretestQs(allQs.filter(q => q.category === 'PRETEST'));
-    setMateriQs(allQs.filter(q => q.category === 'MATERI'));
-    setMisiQs(allQs.filter(q => q.category !== 'PRETEST' && q.category !== 'MATERI'));
+    const shuffleArray = (arr) => [...arr].sort(() => Math.random() - 0.5);
+    const shouldShuffle = sData?.config?.shuffleQuestions;
+
+    let pretest = allQs.filter(q => q.category === 'PRETEST');
+    let materi = allQs.filter(q => q.category === 'MATERI');
+    let misi = allQs.filter(q => q.category !== 'PRETEST' && q.category !== 'MATERI');
+
+    if (shouldShuffle) {
+      pretest = shuffleArray(pretest);
+      misi = shuffleArray(misi);
+    }
+
+    setPretestQs(pretest);
+    setMateriQs(materi);
+    setMisiQs(misi);
 
     if (pData.progress >= 100) {
       setActiveModule('finish');
@@ -275,7 +287,7 @@ export default function Quiz() {
       <section className="py-8 px-4 flex-1 bg-slate-50">
         <div className="max-w-3xl mx-auto w-full">
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5 mb-8">
-            <div className="text-5xl">{player?.avatar}</div>
+            <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${player?.avatar}`} className="w-16 h-16 rounded-full border-2 border-slate-200 bg-slate-100 shadow-sm" alt="avatar" />
             <div>
               <h2 className="text-2xl font-black text-slate-800">{player?.name}</h2>
               <p className="font-bold text-slate-400">Peta Pembelajaran ChemQuest</p>

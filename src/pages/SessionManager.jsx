@@ -4,10 +4,11 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { supabase } from '../lib/supabase';
 import { sampleQuestions } from '../data/sampleQuestions';
 import { Dialog } from '../components/DialogManager';
+import ImportQuestionModal from '../components/ImportQuestionModal';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
-export default function SessionManager({ session }) {
+export default function SessionManager({ session, profile }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeSession, setActiveSession] = useState(null);
@@ -24,6 +25,7 @@ export default function SessionManager({ session }) {
   const [qAnswer, setQAnswer] = useState('');
   const [qImage, setQImage] = useState(null);
   const [qCaption, setQCaption] = useState('');
+  const [editQuestionId, setEditQuestionId] = useState(null);
 
   // Config Modal State
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -35,8 +37,11 @@ export default function SessionManager({ session }) {
     enablePretest: true,
     enableMateri: true,
     enableMisi: true,
-    examMode: false
+    examMode: false,
+    shuffleQuestions: false
   });
+
+  const [showImportModal, setShowImportModal] = useState(false);
 
   useEffect(() => {
     loadSession();
@@ -64,7 +69,12 @@ export default function SessionManager({ session }) {
 
   const loadSession = async () => {
     const { data, error } = await supabase.from('sessions').select('*').eq('id', id).single();
-    if (data) setActiveSession(data);
+    if (data) {
+      setActiveSession(data);
+      if (data.config) {
+        setSessionConfig(prev => ({ ...prev, ...data.config }));
+      }
+    }
   };
 
   const loadQuestions = async () => {
@@ -78,18 +88,13 @@ export default function SessionManager({ session }) {
   };
 
   const openLiveConfig = () => {
-    if (activeSession.status === 'live') {
-      toggleLive();
-    } else {
-      setShowConfigModal(true);
-    }
+    setShowConfigModal(true);
   };
 
-  const toggleLive = async (finalConfig = null) => {
-    const newStatus = activeSession.status === 'live' ? 'finished' : 'live';
-    const updates = { status: newStatus };
+  const startLive = async (finalConfig = null) => {
+    const updates = { status: 'live' };
     
-    if (newStatus === 'live' && finalConfig) {
+    if (finalConfig) {
       updates.config = {
         ...finalConfig
       };
@@ -97,10 +102,21 @@ export default function SessionManager({ session }) {
 
     const { error } = await supabase.from('sessions').update(updates).eq('id', id);
     if (!error) {
-      setActiveSession({ ...activeSession, status: newStatus, config: updates.config || activeSession.config });
+      setActiveSession({ ...activeSession, status: 'live', config: updates.config || activeSession.config });
       setShowConfigModal(false);
     } else {
       await Dialog.alert("Gagal update status: " + error.message, "Error");
+    }
+  };
+
+  const finishMatch = async () => {
+    if (await Dialog.confirm("Akhiri pertandingan ini secara permanen? Hasil akan difinalisasi dan layar Arena akan menampilkan podium.", "Selesaikan Pertandingan")) {
+      const { error } = await supabase.from('sessions').update({ status: 'finished' }).eq('id', id);
+      if (!error) {
+        setActiveSession({ ...activeSession, status: 'finished' });
+      } else {
+        await Dialog.alert("Gagal menyelesaikan: " + error.message, "Error");
+      }
     }
   };
 
@@ -143,14 +159,55 @@ export default function SessionManager({ session }) {
       caption: qCaption,
     };
 
-    const { error } = await supabase.from('questions').insert([payload]);
+    let error;
+    if (editQuestionId) {
+      const { error: updErr } = await supabase.from('questions').update(payload).eq('id', editQuestionId);
+      error = updErr;
+    } else {
+      const { error: insErr } = await supabase.from('questions').insert([payload]);
+      error = insErr;
+    }
+
     if (!error) {
       setShowQForm(false);
+      setEditQuestionId(null);
       setQText(''); setQOptions(''); setQAnswer(''); setQImage(null); setQCaption('');
       loadQuestions();
     } else {
       await Dialog.alert(error.message, "Gagal Menyimpan");
     }
+  };
+
+  const handleEditQuestion = (q) => {
+    setEditQuestionId(q.id);
+    setQCategory(q.category);
+    setQText(q.q);
+    
+    let opts = q.options;
+    try { if (typeof opts === 'string') opts = JSON.parse(opts); } catch(e){}
+    if (Array.isArray(opts)) opts = opts.join(', ');
+    setQOptions(opts || '');
+    
+    setQAnswer(q.answer || '');
+    setQImage(q.imageBase64 || null);
+    setQCaption(q.caption || '');
+    
+    setShowQForm(true);
+  };
+
+  const moveQuestion = async (filteredQs, index, direction) => {
+    if (direction === -1 && index === 0) return;
+    if (direction === 1 && index === filteredQs.length - 1) return;
+    
+    const currentQ = filteredQs[index];
+    const targetQ = filteredQs[index + direction];
+    
+    const tempTime = currentQ.created_at;
+    
+    await supabase.from('questions').update({ created_at: targetQ.created_at }).eq('id', currentQ.id);
+    await supabase.from('questions').update({ created_at: tempTime }).eq('id', targetQ.id);
+    
+    loadQuestions();
   };
 
   const deleteQuestion = async (qId) => {
@@ -197,12 +254,21 @@ export default function SessionManager({ session }) {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-              <button 
-                onClick={openLiveConfig} 
-                className={`flex-1 lg:flex-none px-6 py-3.5 rounded-xl font-black shadow-lg transition-all flex justify-center items-center gap-2 ${isLive ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20'}`}
-              >
-                {isLive ? <><i className="fa-solid fa-lock"></i> Tutup Gerbang</> : <><i className="fa-solid fa-play"></i> Buka Gerbang Kuis</>}
-              </button>
+              {!isLive ? (
+                <button 
+                  onClick={openLiveConfig} 
+                  className="flex-1 lg:flex-none px-6 py-3.5 rounded-xl font-black shadow-lg transition-all flex justify-center items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20"
+                >
+                  <i className="fa-solid fa-play"></i> Buka Gerbang Kuis
+                </button>
+              ) : (
+                <button 
+                  onClick={finishMatch} 
+                  className="flex-1 lg:flex-none px-6 py-3.5 rounded-xl font-black shadow-lg transition-all flex justify-center items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/20"
+                >
+                  <i className="fa-solid fa-flag-checkered"></i> Selesaikan Pertandingan
+                </button>
+              )}
               <button 
                 onClick={() => navigate(`/arena/${activeSession.pin}`)} 
                 className="flex-1 lg:flex-none bg-sky-500 hover:bg-sky-600 text-white px-6 py-3.5 rounded-xl font-black shadow-lg shadow-sky-500/20 transition-all flex justify-center items-center gap-2"
@@ -237,6 +303,11 @@ export default function SessionManager({ session }) {
                 <i className={`fa-solid ${showQForm ? 'fa-times' : 'fa-plus'}`}></i> 
                 {activeTab === 'pretest' ? 'Tambah Soal Pre-Test' : activeTab === 'materi' ? 'Tambah Materi' : 'Tambah Misi Game'}
               </button>
+              
+              <button onClick={() => setShowImportModal(true)} className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-6 py-3 rounded-xl font-black border border-indigo-200 transition-colors flex items-center gap-2">
+                <i className="fa-solid fa-download"></i> Import dari Bank/Kelas Lain
+              </button>
+
               {activeTab === 'soal' && (
                 <button onClick={loadSampleQuestions} className="bg-amber-50 text-amber-600 hover:bg-amber-100 px-6 py-3 rounded-xl font-black border border-amber-200 transition-colors flex items-center gap-2">
                   <i className="fa-solid fa-magic"></i> Muat Soal Contoh
@@ -308,7 +379,7 @@ export default function SessionManager({ session }) {
                   </div>
                 </div>
                 <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-100">
-                  <button onClick={() => setShowQForm(false)} className="px-6 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-black transition-colors">Batal</button>
+                  <button onClick={() => { setShowQForm(false); setEditQuestionId(null); }} className="px-6 py-3 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl font-black transition-colors">Batal</button>
                   <button onClick={() => {
                     // Inject correct category based on activeTab
                     if (activeTab === 'pretest') setQCategory('PRETEST');
@@ -379,7 +450,10 @@ export default function SessionManager({ session }) {
                       </div>
                       
                       <div className="flex md:flex-col gap-2 shrink-0 h-fit justify-end">
-                        <button onClick={() => deleteQuestion(q.id)} className="p-3 text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-colors font-bold"><i className="fa-solid fa-trash"></i></button>
+                        <button onClick={() => moveQuestion(filteredQuestions, i, -1)} disabled={i === 0} className={`p-2 rounded-xl transition-colors font-bold ${i === 0 ? 'text-slate-300 bg-slate-50' : 'text-slate-500 bg-slate-100 hover:bg-slate-200'}`} title="Geser ke Atas"><i className="fa-solid fa-arrow-up"></i></button>
+                        <button onClick={() => moveQuestion(filteredQuestions, i, 1)} disabled={i === filteredQuestions.length - 1} className={`p-2 rounded-xl transition-colors font-bold ${i === filteredQuestions.length - 1 ? 'text-slate-300 bg-slate-50' : 'text-slate-500 bg-slate-100 hover:bg-slate-200'}`} title="Geser ke Bawah"><i className="fa-solid fa-arrow-down"></i></button>
+                        <button onClick={() => handleEditQuestion(q)} className="p-3 mt-2 text-blue-500 bg-blue-50 hover:bg-blue-500 hover:text-white rounded-xl transition-colors font-bold" title="Edit Soal"><i className="fa-solid fa-pen"></i></button>
+                        <button onClick={() => deleteQuestion(q.id)} className="p-3 text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-colors font-bold" title="Hapus Soal"><i className="fa-solid fa-trash"></i></button>
                       </div>
                     </div>
                   );
@@ -409,7 +483,7 @@ export default function SessionManager({ session }) {
                     <div key={p.id} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 relative overflow-hidden">
                       <div className="absolute top-0 right-0 bg-slate-100 text-slate-400 font-black px-4 py-2 rounded-bl-2xl text-xl opacity-50">#{index+1}</div>
                       <div className="flex items-center gap-4 mb-4 border-b border-slate-100 pb-4">
-                        <span className="text-5xl drop-shadow-md">{p.avatar}</span>
+                        <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${p.avatar}`} className="w-16 h-16 rounded-full border-2 border-slate-200 bg-slate-100 shadow-sm" alt="avatar" />
                         <div>
                           <h3 className="font-black text-xl text-slate-800 leading-tight">{p.name}</h3>
                           <div className="mt-1 flex gap-2 text-sm font-bold items-center flex-wrap">
@@ -448,36 +522,45 @@ export default function SessionManager({ session }) {
             </div>
             
             <div className="p-6 space-y-6">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wider">Durasi Pretest (Menit)</label>
-                  <input 
-                    type="number" 
-                    value={sessionConfig.timerPretestMinutes} 
-                    onChange={e => setSessionConfig({...sessionConfig, timerPretestMinutes: parseInt(e.target.value) || 1})}
-                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-black text-xl text-center focus:border-teal-400 focus:outline-none"
-                    min="1"
-                  />
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <label className="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest text-center">Pre-Test</label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={sessionConfig.timerPretestMinutes} 
+                      onChange={e => setSessionConfig({...sessionConfig, timerPretestMinutes: parseInt(e.target.value) || 1})}
+                      className="w-full bg-white border-2 border-slate-200 rounded-lg px-2 py-2 font-black text-lg text-center focus:border-teal-400 focus:outline-none"
+                      min="1"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">mnt</span>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wider">Durasi Materi (Menit)</label>
-                  <input 
-                    type="number" 
-                    value={sessionConfig.timerMateriMinutes} 
-                    onChange={e => setSessionConfig({...sessionConfig, timerMateriMinutes: parseInt(e.target.value) || 1})}
-                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-black text-xl text-center focus:border-amber-400 focus:outline-none"
-                    min="1"
-                  />
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <label className="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest text-center">Materi</label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={sessionConfig.timerMateriMinutes} 
+                      onChange={e => setSessionConfig({...sessionConfig, timerMateriMinutes: parseInt(e.target.value) || 1})}
+                      className="w-full bg-white border-2 border-slate-200 rounded-lg px-2 py-2 font-black text-lg text-center focus:border-amber-400 focus:outline-none"
+                      min="1"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">mnt</span>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wider">Durasi Misi (Menit)</label>
-                  <input 
-                    type="number" 
-                    value={sessionConfig.timerMisiMinutes} 
-                    onChange={e => setSessionConfig({...sessionConfig, timerMisiMinutes: parseInt(e.target.value) || 1})}
-                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-black text-xl text-center focus:border-rose-400 focus:outline-none"
-                    min="1"
-                  />
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <label className="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest text-center">Misi Kuis</label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={sessionConfig.timerMisiMinutes} 
+                      onChange={e => setSessionConfig({...sessionConfig, timerMisiMinutes: parseInt(e.target.value) || 1})}
+                      className="w-full bg-white border-2 border-slate-200 rounded-lg px-2 py-2 font-black text-lg text-center focus:border-rose-400 focus:outline-none"
+                      min="1"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">mnt</span>
+                  </div>
                 </div>
               </div>
               
@@ -530,11 +613,21 @@ export default function SessionManager({ session }) {
                   <input type="checkbox" className="w-6 h-6 mt-1 accent-rose-500 rounded-md cursor-pointer shrink-0" checked={sessionConfig.examMode} onChange={e => setSessionConfig({...sessionConfig, examMode: e.target.checked})} />
                 </label>
               </div>
+
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+                <label className="flex items-start justify-between cursor-pointer group gap-4">
+                  <div>
+                    <span className="font-black text-indigo-700 block mb-1"><i className="fa-solid fa-shuffle w-6 text-center"></i> Acak Urutan Soal</span>
+                    <span className="text-xs font-bold text-indigo-600/70 block">Soal pada Pre-Test dan Misi Utama akan diacak (shuffle) berbeda-beda untuk tiap siswa untuk mencegah saling menyontek.</span>
+                  </div>
+                  <input type="checkbox" className="w-6 h-6 mt-1 accent-indigo-500 rounded-md cursor-pointer shrink-0" checked={sessionConfig.shuffleQuestions} onChange={e => setSessionConfig({...sessionConfig, shuffleQuestions: e.target.checked})} />
+                </label>
+              </div>
             </div>
             
             <div className="p-6 bg-slate-50 border-t border-slate-100">
               <button 
-                onClick={() => toggleLive(sessionConfig)}
+                onClick={() => startLive(sessionConfig)}
                 className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-black shadow-lg shadow-emerald-500/20 transition-transform transform hover:-translate-y-1 flex items-center justify-center gap-2"
               >
                 <i className="fa-solid fa-rocket"></i> Mulai & Buka Gerbang Sekarang
@@ -543,6 +636,14 @@ export default function SessionManager({ session }) {
           </div>
         </div>
       )}
+      <ImportQuestionModal 
+        isOpen={showImportModal} 
+        onClose={() => setShowImportModal(false)}
+        targetSessionId={id}
+        targetCategory={activeTab === 'soal' ? 'misi' : activeTab === 'pretest' ? 'pretest' : 'materi'}
+        onImportSuccess={() => loadQuestions()}
+        profile={profile}
+      />
     </section>
   );
 }

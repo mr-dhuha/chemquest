@@ -15,9 +15,13 @@ export default function Arena({ session: teacherSession }) {
 
   useEffect(() => {
     if (!sessionData) {
-      supabase.from('sessions').select('*').eq('pin', pin).eq('status', 'live').single().then(({ data }) => {
+      supabase.from('sessions').select('*').eq('pin', pin).in('status', ['live', 'finished']).single().then(({ data }) => {
         if (data) {
           setSessionData(data);
+          if (data.status === 'finished') {
+            setIsTimeUp(true);
+            setTimeLeftStr('00:00');
+          }
         } else {
           Dialog.alert('Sesi Arena tidak ditemukan atau belum live.', 'Arena Tidak Tersedia').then(() => {
             navigate('/');
@@ -148,7 +152,7 @@ export default function Arena({ session: teacherSession }) {
               {/* JUARA 2 */}
               {players[1] ? (
                 <div className="flex flex-col items-center justify-end w-40 order-2 sm:order-1 animate-[slideUpFade_0.5s_ease-out_forwards]">
-                  <div className="text-6xl mb-2 drop-shadow-lg">{players[1].avatar}</div>
+                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${players[1].avatar}`} className="w-16 h-16 rounded-full border-2 border-slate-300 bg-slate-100 mb-2 drop-shadow-lg" alt="avatar" />
                   <div className="bg-slate-800 text-white px-4 py-2 rounded-t-xl text-center w-full shadow-xl">
                     <p className="font-black text-sm truncate">{players[1].name}</p>
                     <p className="text-teal-400 font-black">{players[1].score} pt</p>
@@ -163,7 +167,7 @@ export default function Arena({ session: teacherSession }) {
               {players[0] ? (
                 <div className="flex flex-col items-center justify-end w-48 order-1 sm:order-2 z-10 animate-[slideUpFade_0.7s_ease-out_forwards]">
                   <i className="fa-solid fa-crown text-amber-400 text-4xl mb-1 drop-shadow-md animate-bounce"></i>
-                  <div className="text-7xl mb-2 drop-shadow-xl">{players[0].avatar}</div>
+                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${players[0].avatar}`} className="w-20 h-20 rounded-full border-4 border-amber-300 bg-slate-100 mb-2 drop-shadow-xl" alt="avatar" />
                   <div className="bg-slate-800 text-white px-4 py-3 rounded-t-xl text-center w-full shadow-2xl border-2 border-b-0 border-amber-400/30">
                     <p className="font-black text-lg truncate text-amber-300">{players[0].name}</p>
                     <p className="text-teal-400 font-black">{players[0].score} pt</p>
@@ -177,7 +181,7 @@ export default function Arena({ session: teacherSession }) {
               {/* JUARA 3 */}
               {players[2] ? (
                 <div className="flex flex-col items-center justify-end w-40 order-3 animate-[slideUpFade_0.9s_ease-out_forwards]">
-                  <div className="text-5xl mb-2 drop-shadow-md">{players[2].avatar}</div>
+                  <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${players[2].avatar}`} className="w-14 h-14 rounded-full border-2 border-orange-300 bg-slate-100 mb-2 drop-shadow-md" alt="avatar" />
                   <div className="bg-slate-800 text-white px-4 py-2 rounded-t-xl text-center w-full shadow-lg">
                     <p className="font-black text-sm truncate">{players[2].name}</p>
                     <p className="text-teal-400 font-black">{players[2].score} pt</p>
@@ -197,7 +201,7 @@ export default function Arena({ session: teacherSession }) {
                   {players.slice(3, 9).map((p, i) => (
                     <div key={p.id} className="bg-slate-700/50 rounded-xl p-3 flex items-center gap-3">
                       <span className="text-slate-500 font-black">#{i+4}</span>
-                      <span className="text-2xl">{p.avatar}</span>
+                      <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${p.avatar}`} className="w-8 h-8 rounded-full bg-slate-100 border border-slate-500" alt="avatar" />
                       <div className="overflow-hidden">
                         <p className="text-white font-bold text-xs truncate">{p.name}</p>
                         <p className="text-teal-400 font-black text-xs">{p.score} pt</p>
@@ -211,33 +215,47 @@ export default function Arena({ session: teacherSession }) {
         </div>
       ) : (
         // TRACK VIEW
-        <div className="flex-1 overflow-y-auto bg-green-400 relative p-2 sm:p-6">
-          <div className="w-full min-h-full bg-[#cb5d38] rounded-[2rem] sm:rounded-[3rem] border-8 sm:border-[12px] border-white/40 shadow-inner flex flex-col relative overflow-hidden">
+        <div className="flex-1 overflow-hidden bg-green-400 relative p-2 sm:p-6 flex flex-col">
+          <div className="w-full flex-1 bg-[#cb5d38] rounded-[2rem] sm:rounded-[3rem] border-8 sm:border-[12px] border-white/40 shadow-inner flex flex-col relative overflow-hidden">
             <div className="absolute right-[5%] top-0 bottom-0 w-12 sm:w-16 checkerboard-bg z-0 opacity-90 border-l-4 border-white drop-shadow-xl"></div>
             <div className="absolute right-[5%] -top-4 w-12 sm:w-16 text-center z-10 font-black text-white text-xl drop-shadow-md">FINISH</div>
             
-            {players.map(p => {
-              let pct = (p.score / arenaMaxScore) * 90;
-              pct = Math.min(95, Math.max(0, pct));
-              const isFinished = p.progress >= 100;
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(laneIdx => {
+              const isPelotonLane = laneIdx === 9;
+              const lanePlayers = isPelotonLane ? players.slice(9) : (players[laneIdx] ? [players[laneIdx]] : []);
 
               return (
-                <div key={p.id} className="relative h-[4.5rem] sm:h-[5.5rem] w-full border-b-[3px] border-dashed border-white/20 flex items-center z-10 box-border px-4 shrink-0">
-                  <div className="absolute transition-all duration-[1500ms] ease-out flex items-center gap-2 sm:gap-4 group" style={{ left: `${pct}%`, transform: `translateX(${pct > 50 ? '-50%' : '0%'})` }}>
-                    <div className="flex flex-col items-center">
-                      <div className="text-[10px] sm:text-xs font-black bg-white/90 text-slate-800 px-2 py-0.5 rounded shadow-md whitespace-nowrap mb-0.5">{p.score} pt</div>
-                      <div className={`text-3xl sm:text-5xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] relative ${isFinished ? 'animate-bounce' : 'animate-[pulse_1s_ease-in-out_infinite]'}`}>
-                        {p.avatar}
-                        {isFinished && <i className="fa-solid fa-medal absolute -bottom-2 -right-2 text-xl text-amber-400 drop-shadow-md"></i>}
+                <div key={`lane-${laneIdx}`} className="relative flex-1 w-full border-b-[3px] border-dashed border-white/20 flex items-center z-10 box-border px-4 shrink-0">
+                  {lanePlayers.map((p, pIndex) => {
+                    let pct = (p.score / arenaMaxScore) * 90;
+                    pct = Math.min(95, Math.max(0, pct));
+                    const isFinished = p.progress >= 100;
+                    
+                    // Rank text
+                    const rank = isPelotonLane ? 10 + pIndex : laneIdx + 1;
+
+                    return (
+                      <div key={p.id} className="absolute transition-all duration-[1500ms] ease-out flex items-center gap-2 sm:gap-4 group hover:z-50" style={{ left: `${pct}%`, transform: `translateX(${pct > 50 ? '-50%' : '0%'})`, zIndex: 40 - pIndex }}>
+                        <div className="flex flex-col items-center">
+                          <div className="text-[10px] sm:text-xs font-black bg-white/90 text-slate-800 px-2 py-0.5 rounded shadow-md whitespace-nowrap mb-0.5">{p.score} pt</div>
+                          <div className={`relative ${isFinished ? 'animate-bounce' : 'animate-[pulse_1s_ease-in-out_infinite]'}`}>
+                            <img src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${p.avatar}`} className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-slate-100 border-2 border-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]" alt="avatar" />
+                            {isFinished && <i className="fa-solid fa-medal absolute -bottom-2 -right-2 text-xl text-amber-400 drop-shadow-md z-20"></i>}
+                            <div className="absolute -top-2 -left-2 w-5 h-5 bg-slate-800 text-white rounded-full flex items-center justify-center text-[10px] font-black border-2 border-white shadow-md z-30">{rank}</div>
+                          </div>
+                        </div>
+                        <div className="bg-slate-900/80 backdrop-blur border-2 border-white/20 text-white px-3 sm:px-4 py-1.5 rounded-xl shadow-xl flex flex-col min-w-[100px] max-w-[140px] sm:max-w-[180px] opacity-90 group-hover:opacity-100 transition-opacity">
+                          <span className="text-xs sm:text-sm font-black truncate">{p.name}</span>
+                          <div className="w-full bg-white/20 h-1.5 rounded-full mt-1 overflow-hidden">
+                            <div className="h-full bg-emerald-400" style={{ width: `${p.progress}%` }}></div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="bg-slate-900/80 backdrop-blur border-2 border-white/20 text-white px-3 sm:px-4 py-1.5 rounded-xl shadow-xl flex flex-col min-w-[100px] max-w-[140px] sm:max-w-[180px]">
-                      <span className="text-xs sm:text-sm font-black truncate">{p.name}</span>
-                      <div className="w-full bg-white/20 h-1.5 rounded-full mt-1 overflow-hidden">
-                        <div className="h-full bg-emerald-400" style={{ width: `${p.progress}%` }}></div>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
+                  {lanePlayers.length === 0 && (
+                    <div className="text-white/20 font-black text-xl italic px-4 select-none">TRACK {laneIdx + 1}</div>
+                  )}
                 </div>
               );
             })}

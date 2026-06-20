@@ -13,7 +13,7 @@ export default function TeacherAuth() {
   const handleLogin = async () => {
     setError('');
     if (!email || !password) return setError("Isi email & sandi");
-    
+
     setLoading(true);
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) {
@@ -24,14 +24,29 @@ export default function TeacherAuth() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      await Dialog.alert("Silakan masukkan email Anda di kolom email terlebih dahulu, lalu klik Lupa Sandi.", "Info");
+      return;
+    }
+    setLoading(true);
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/dashboard',
+    });
+    setLoading(false);
+
+    if (err) await Dialog.alert(err.message, "Gagal Mengirim Link");
+    else await Dialog.alert(`Link pemulihan kata sandi telah dikirim dari Supabase Auth ke ${email}. Silakan cek kotak masuk atau folder spam Anda.`, "Berhasil");
+  };
+
   const handleRegister = async () => {
     setError('');
     if (!email || password.length < 6) return setError("Email valid & sandi min 6 char");
-    
+
     setLoading(true);
     const { error: err } = await supabase.auth.signUp({ email, password });
     setLoading(false);
-    
+
     if (err) await Dialog.alert(err.message, "Gagal Mendaftar");
     else await Dialog.alert("Akun terdaftar! Silakan Login masuk.", "Berhasil");
   };
@@ -42,41 +57,46 @@ export default function TeacherAuth() {
         <button onClick={() => navigate('/')} className="text-slate-400 hover:text-slate-700 font-bold mb-6 flex items-center gap-2 transition-colors">
           <i className="fa-solid fa-arrow-left"></i> Kembali ke Awal
         </button>
-        
+
         <h2 className="text-3xl font-black text-slate-800 mb-2">
           <i className="fa-solid fa-chalkboard-user text-sky-500 mr-2"></i> Portal Guru
         </h2>
         <p className="text-slate-500 font-medium mb-8">Login untuk mengelola soal, materi adaptif, dan Arena Kuis.</p>
-        
+
         <div className="space-y-4">
-          <input 
-            type="email" 
+          <input
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors" 
-            placeholder="Email Terdaftar" 
+            className="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors"
+            placeholder="Email Terdaftar"
           />
-          <input 
-            type="password" 
+          <input
+            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors" 
-            placeholder="Kata Sandi" 
+            className="w-full p-4 border-2 border-slate-200 bg-slate-50 focus:bg-white rounded-xl focus:border-sky-500 outline-none font-bold placeholder:font-normal transition-colors"
+            placeholder="Kata Sandi"
           />
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <button 
-              onClick={handleLogin} 
+            <button
+              onClick={handleLogin}
               disabled={loading}
               className="flex-1 bg-sky-500 hover:bg-sky-600 text-white font-black py-4 rounded-xl shadow-lg shadow-sky-500/30 transition-transform transform hover:-translate-y-1 disabled:opacity-50"
             >
               Login Masuk
             </button>
-            <button 
-              onClick={handleRegister} 
+            <button
+              onClick={handleRegister}
               disabled={loading}
               className="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-black py-4 rounded-xl shadow-lg transition-transform transform hover:-translate-y-1 disabled:opacity-50"
             >
               Daftar Baru
+            </button>
+          </div>
+          <div className="text-center mt-2">
+            <button onClick={handleForgotPassword} disabled={loading} className="text-slate-400 hover:text-sky-500 font-bold text-sm transition-colors">
+              Lupa Kata Sandi?
             </button>
           </div>
           {error && <p className="text-rose-500 text-sm font-bold text-center bg-rose-50 p-3 rounded-xl mt-2">{error}</p>}

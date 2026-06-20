@@ -43,7 +43,10 @@ export default function TeacherDashboard({ session }) {
     });
     
     if (error) await Dialog.alert("Gagal membuat sesi: " + error.message, "Error");
-    else loadSessions();
+    else {
+      supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Membuat sesi kelas baru', details: `Sesi: ${title.trim()} (PIN: ${pin})` }).then();
+      loadSessions();
+    }
   };
 
   const handleRenameSession = async (e, id, oldTitle) => {
@@ -53,7 +56,10 @@ export default function TeacherDashboard({ session }) {
 
     const { error } = await supabase.from('sessions').update({ title: newTitle.trim() }).eq('id', id);
     if (error) await Dialog.alert("Gagal mengganti nama: " + error.message, "Error");
-    else loadSessions();
+    else {
+      supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Mengganti nama sesi kelas', details: `Dari ${oldTitle} menjadi ${newTitle.trim()}` }).then();
+      loadSessions();
+    }
   };
 
   const handleDeleteSession = async (e, id) => {
@@ -63,7 +69,20 @@ export default function TeacherDashboard({ session }) {
 
     const { error } = await supabase.from('sessions').delete().eq('id', id);
     if (error) await Dialog.alert("Gagal menghapus sesi: " + error.message, "Error");
-    else loadSessions();
+    else {
+      supabase.from('activity_logs').insert({ teacher_id: session.user.id, action: 'Menghapus sesi kelas' }).then();
+      loadSessions();
+    }
+  };
+
+  const handleChangePassword = async () => {
+    const newPwd = await Dialog.prompt("Masukkan password baru Anda (minimal 6 karakter):", "Ganti Password");
+    if (!newPwd) return;
+    if (newPwd.length < 6) return Dialog.alert("Password minimal 6 karakter!", "Gagal");
+
+    const { error } = await supabase.auth.updateUser({ password: newPwd });
+    if (error) await Dialog.alert(error.message, "Gagal");
+    else await Dialog.alert("Password berhasil diubah!", "Sukses");
   };
 
   return (
@@ -74,12 +93,26 @@ export default function TeacherDashboard({ session }) {
             <h2 className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">Ruang Kendali</h2>
             <p className="text-slate-500 font-bold mt-1">Kelola sesi kelas, pre-test, materi, dan kuis Anda.</p>
           </div>
-          <button 
-            onClick={handleCreateSession} 
-            className="w-full sm:w-auto bg-teal-500 hover:bg-teal-600 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1"
-          >
-            <i className="fa-solid fa-plus text-xl"></i> Buat Sesi Baru
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <button 
+              onClick={handleChangePassword} 
+              className="bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-transform transform hover:-translate-y-1"
+            >
+              <i className="fa-solid fa-key text-xl"></i> Ganti Password
+            </button>
+            <button 
+              onClick={() => navigate('/bank')} 
+              className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-transform transform hover:-translate-y-1"
+            >
+              <i className="fa-solid fa-vault text-xl"></i> Bank Soal
+            </button>
+            <button 
+              onClick={handleCreateSession} 
+              className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 transition-transform transform hover:-translate-y-1"
+            >
+              <i className="fa-solid fa-plus text-xl"></i> Buat Sesi Baru
+            </button>
+          </div>
         </div>
 
         {error && <div className="text-rose-500 font-bold p-4 bg-rose-50 rounded-xl mb-4">Error: {error}</div>}
