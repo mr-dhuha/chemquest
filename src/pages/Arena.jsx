@@ -10,8 +10,8 @@ export default function Arena({ session: teacherSession }) {
   const [sessionData, setSessionData] = useState(location.state?.session || null);
   const [players, setPlayers] = useState([]);
   const [arenaMaxScore, setArenaMaxScore] = useState(10);
-  const [timeLeftStr, setTimeLeftStr] = useState('');
-  const [isTimeUp, setIsTimeUp] = useState(false);
+  const [timeLeftStr, setTimeLeftStr] = useState(location.state?.session?.status === 'finished' ? '00:00' : '');
+  const [isTimeUp, setIsTimeUp] = useState(location.state?.session?.status === 'finished');
 
   useEffect(() => {
     if (!sessionData) {
@@ -28,8 +28,13 @@ export default function Arena({ session: teacherSession }) {
           });
         }
       });
+    } else {
+      if (sessionData.status === 'finished' && !isTimeUp) {
+        setIsTimeUp(true);
+        setTimeLeftStr('00:00');
+      }
     }
-  }, [pin, sessionData]);
+  }, [pin, sessionData, isTimeUp]);
 
   useEffect(() => {
     if (sessionData) {

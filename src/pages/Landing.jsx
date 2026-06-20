@@ -55,12 +55,18 @@ export default function Landing() {
       .from('sessions')
       .select('*')
       .eq('pin', cleanPin)
-      .eq('status', 'live')
+      .in('status', ['live', 'finished'])
       .single();
 
     if (sessErr || !sessionData) {
       setLoading(false);
-      setError("PIN Tidak Valid atau Kelas belum dibuka.");
+      setError("PIN Tidak Valid atau Sesi tidak tersedia.");
+      return;
+    }
+
+    if (sessionData.status === 'finished' && mode === 'student') {
+      setLoading(false);
+      setError("Kelas sudah ditutup. Kamu hanya bisa Tonton Arena Live.");
       return;
     }
 
