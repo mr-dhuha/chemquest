@@ -1,0 +1,37 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Run every 3 days at midnight UTC
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Error: SUPABASE_URL or SUPABASE_ANON_KEY is missing."
+            echo "Please add them as repository secrets in GitHub (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          
+          echo "Pinging Supabase API to keep project alive..."
+          
+          # We ping the root of the REST API, which responds with 200 OK and a Swagger schema.
+          # This counts as an API request for Supabase's activity tracking.
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "${SUPABASE_URL}/rest/v1/" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Successfully pinged Supabase (Status: $HTTP_STATUS)"
+          else
+            echo "❌ Failed to ping Supabase. Status: $HTTP_STATUS"
+            exit 1
+          fi
